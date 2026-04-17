@@ -1,0 +1,46 @@
+/* * PusztaPlay Magic Login - Frontend Pompázatos, de SZIGORÚAN IZOLÁLT Giccs
+ * Idegen elemekre nem támadunk!
+ */
+
+/* A kőkemény bejelentkező gomb lenyomás effektje */
+.pp-magic-login-box button[type="submit"]:active {
+    transform: translate(3px, 3px);
+    box-shadow: 2px 2px 0px #1d2327 !important;
+}
+
+/* Varázslatos fókusz a beviteli mezőn */
+.pp-magic-login-box input[type="email"]:focus {
+    border-color: #ffcc00 !important;
+    box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.4), inset 2px 2px 0px rgba(0,0,0,0.1) !important;
+}
+
+/* --- SPLASH SCREEN ANIMÁCIÓK (Szigorúan prefixálva!) --- */
+
+.pp-magic-splash-container {
+    animation: ppSplashSlideIn 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+@keyframes ppSplashSlideIn {
+    from { opacity: 0; transform: translateY(50px) scale(0.9); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.pp-magic-rocket { 
+    font-size: 4rem; 
+    margin-bottom: 24px; 
+    animation: ppRocketFloat 2s ease-in-out infinite;
+}
+
+@keyframes ppRocketFloat {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-12px) rotate(5deg); }
+}
+
+.pp-magic-progress-circle {
+    background: conic-gradient(#10b981 0deg, #e5e7eb 0deg);
+    animation: ppProgressFill 3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes ppProgressFill {
+    to { background: conic-gradient(#10b981 360deg, #e5e7eb 360deg); }
+}

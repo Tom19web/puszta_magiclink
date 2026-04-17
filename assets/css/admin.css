@@ -1,0 +1,52 @@
+/* * PusztaPlay Magic Login - Admin Tisztítótűz
+ * Ahol elrejtjük a WordPress alapvető nyomorúságait és a pluginok szemetét.
+ */
+
+/* WordPress alap mezők eltüntetése */
+.user-admin-color-wrap,
+.user-comment-shortcuts-wrap,
+.show-admin-bar,
+.user-language-wrap,
+.user-url-wrap,
+.user-description-wrap {
+    display: none !important;
+}
+
+/* Kíméletlen harc a közösségi média és egyéb plugin mezők ellen */
+.user-twitter-wrap,
+.user-x-wrap,
+.user-facebook-wrap,
+.user-instagram-wrap,
+.user-linkedin-wrap,
+.user-myspace-wrap,
+.user-pinterest-wrap,
+.user-soundcloud-wrap,
+.user-tumblr-wrap,
+.user-wikipedia-wrap,
+.user-youtube-wrap,
+.user-mastodon-wrap,
+.user-elementor_ai_status-wrap {
+    display: none !important;
+}
+
+/* Elementor és Yoast szekciók kegyetlen legyilkolása */
+#elementor-notes-user-profile,
+.elementor-notes-user-profile,
+#yoast-seo-schema-enhancements,
+#yoast-seo-settings,
+.yoast.yoast-settings,
+.yoast-user-settings,
+.wpseo-metabox,
+.wpseo-user-profile,
+.extra-information,
+.employer-information {
+    display: none !important;
+}
+
+/* Ha a pofátlan pluginok h2/h3 címmel renderelnek */
+h2[data-section="yoast"],
+h3[data-section="yoast"],
+h2[data-section="elementor"],
+h3[data-section="elementor"] {
+    display: none !important;
+}
