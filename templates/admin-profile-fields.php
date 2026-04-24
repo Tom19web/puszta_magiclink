@@ -13,12 +13,12 @@
         <th><label for="pp_xtream_pass">Xtream jelszó</label></th>
         <td>
             <input type="password" name="pp_xtream_pass" id="pp_xtream_pass"
-                value="<?php echo esc_attr(pp_get_xtream_pass($user->ID)); ?>"
+                value="<?php echo esc_attr(pp_get_xtream_creds($user->ID)['xtream_pass']); ?>"
                 class="regular-text"
                 autocomplete="new-password" />
             <p class="description">
                 Csak admin látja. A lejátszó plugin automatikusan ezzel lépteti be a felhasználót.
-                <?php if (pp_get_xtream_pass($user->ID)) : ?>
+                <?php if (pp_get_xtream_creds($user->ID)['xtream_pass']) : ?>
                     <br><strong style="color:#2ea44f">✓ Jelszó mentve</strong>
                 <?php endif; ?>
             </p>

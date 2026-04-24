@@ -22,6 +22,12 @@ function pp_decrypt_pass($encrypted) {
     return openssl_decrypt(base64_decode($encrypted), 'AES-128-CBC', substr($key, 0, 16), 0, $iv);
 }
 
+// backward compat wrapper
+function pp_get_xtream_pass($user_id) {
+    $creds = pp_get_xtream_creds($user_id);
+    return $creds['xtream_pass'];
+}
+
 function pp_get_xtream_creds($user_id) {
     $user_id = (int) $user_id;
     $xtream_user = get_user_meta($user_id, 'pp_client_id', true);
