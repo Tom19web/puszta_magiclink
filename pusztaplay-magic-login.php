@@ -30,7 +30,10 @@ require_once PP_MAGIC_DIR . 'includes/assets.php';
 // 3. Autentikáció és beléptetés (A sötét mágia motorja)
 require_once PP_MAGIC_DIR . 'includes/auth.php';
 
-// 4. Shortcode-ok (A frontend megjelenés és a csillogás)
+// 4. REST API (QR kódos TV bejelentkezés)
+require_once PP_MAGIC_DIR . 'includes/rest-api.php';
+
+// 5. Shortcode-ok (A frontend megjelenés és a csillogás)
 require_once PP_MAGIC_DIR . 'includes/shortcodes.php';
 
 // 5. Adminisztrációs modulok - Micsoda elegancia: csak akkor töltjük be, ha az adminban vagyunk!

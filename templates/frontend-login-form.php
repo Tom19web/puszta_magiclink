@@ -5,6 +5,9 @@
         <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #555;">Nincs jelszó, csak mágia. 🪄</p>
     </div>
     <form method="post" style="margin: 0;">
+        <?php $rd = isset($_REQUEST['redirect_to']) ? esc_url_raw($_REQUEST['redirect_to']) : ''; if ($rd): ?>
+        <input type="hidden" name="redirect_to" value="<?php echo esc_attr($rd); ?>">
+        <?php endif; ?>
         <div style="position: absolute; left: -9999px; top: -9999px;" aria-hidden="true">
             <input type="text" name="pp_website_url_catch" tabindex="-1" autocomplete="off">
         </div>

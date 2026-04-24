@@ -11,7 +11,7 @@ if (!defined('ABSPATH')) {
 /**
  * Varázs-link generálása és HTML E-mail kiküldése
  */
-function pp_generate_and_send_magic_link($email) {
+function pp_generate_and_send_magic_link($email, $redirect_to = '') {
     $user = get_user_by('email', $email);
     if (!$user) {
         return new WP_Error('no_user', 'Ezzel az e-mail címmel nincs regisztrált felhasználó. Próbálkozz máshol, halandó!');
@@ -26,6 +26,9 @@ function pp_generate_and_send_magic_link($email) {
     
     // A felhasználónak kiküldött link viszont a nyers tokent tartalmazza
     $magic_link = add_query_arg('pp_magic_token', $raw_token, home_url('/'));
+    if (!empty($redirect_to)) {
+        $magic_link = add_query_arg('redirect_to', rawurlencode($redirect_to), $magic_link);
+    }
 
     // Bárhol definiálhatjuk az e-mailhez szükséges változókat, a sablon látni fogja őket
     $options = get_option('pp_smtp_settings');
@@ -81,8 +84,9 @@ function pp_verify_magic_link() {
             wp_set_current_user($user_id);
             wp_set_auth_cookie($user_id);
             
-            // Elegáns átirányítás a vezérlőpultra (vagy egy splash screen sablon betöltése)
-            wp_safe_redirect(home_url('/vezerlopult/'));
+            // Ha van redirect_to, oda megyünk, különben a vezérlőpultra
+            $redirect_to = !empty($_GET['redirect_to']) ? esc_url_raw($_GET['redirect_to']) : home_url('/vezerlopult/');
+            wp_safe_redirect($redirect_to);
             exit;
         } else {
             // Ha a link lejárt, vagy valaki okoskodni próbált
@@ -90,4 +94,57 @@ function pp_verify_magic_link() {
             exit;
         }
     }
+}
+
+/**
+ * TV Auth: QR kódos bejelentkezés kezelése
+ */
+add_action('init', 'pp_handle_tv_auth');
+
+function pp_handle_tv_auth() {
+    $code = isset($_GET['pp_tv']) ? sanitize_text_field($_GET['pp_tv']) : '';
+    if (empty($code)) return;
+
+    $transient_key = 'pp_tv_' . $code;
+    $data = get_transient($transient_key);
+    $is_confirm = isset($_GET['pp_tv_confirm']);
+
+    if (!$data && !$is_confirm) {
+        wp_die('Ez a kód érvénytelen vagy lejárt.');
+    }
+
+    // Confirm gomb lenyomva
+    if ($is_confirm) {
+        if (!is_user_logged_in()) {
+            wp_safe_redirect(home_url('/belepes/?redirect_to=' . rawurlencode(add_query_arg('pp_tv', $code))));
+            exit;
+        }
+
+        $user_id = get_current_user_id();
+        $creds = pp_get_xtream_creds($user_id);
+        if (empty($creds['xtream_user']) || empty($creds['xtream_pass'])) {
+          wp_die('A fiókodhoz nincs Xtream adat beállítva. Kérlek vedd fel a kapcsolatot az üzemeltetővel.');
+        }
+        $data['status']      = 'authenticated';
+        $data['user_id']     = $user_id;
+        $data['xtream_user'] = $creds['xtream_user'];
+        $data['xtream_pass'] = $creds['xtream_pass'];
+        $data['package']     = $creds['package'];
+        $data['sub_end']     = $creds['sub_end'];
+        set_transient($transient_key, $data, 5 * MINUTE_IN_SECONDS);
+
+        include PP_MAGIC_DIR . 'templates/tv-auth-confirm.php';
+        exit;
+    }
+
+    // Ha be van lépve, rögtön mutassuk a confirm gombot
+    if (is_user_logged_in()) {
+        $confirm_link = add_query_arg(['pp_tv' => $code, 'pp_tv_confirm' => '1']);
+        include PP_MAGIC_DIR . 'templates/tv-auth-confirm.php';
+        exit;
+    }
+
+    // Nincs bejelentkezve → redirect a magic link oldalra
+    wp_safe_redirect(home_url('/belepes/?redirect_to=' . rawurlencode(add_query_arg('pp_tv', $code))));
+    exit;
 }

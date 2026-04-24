@@ -57,7 +57,8 @@ function pp_render_login_shortcode() {
             } 
             // Jöhet a varázslat!
             else {
-                $result = pp_generate_and_send_magic_link($email);
+                $redirect_to = isset($_REQUEST['redirect_to']) ? esc_url_raw($_REQUEST['redirect_to']) : '';
+                $result = pp_generate_and_send_magic_link($email, $redirect_to);
                 
                 if (is_wp_error($result)) {
                     if ($result->get_error_code() === 'no_user') {

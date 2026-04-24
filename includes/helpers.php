@@ -8,6 +8,35 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// ── Xtream jelszó titkosítás/dekriptálás ─────────────────────
+function pp_encrypt_pass($plain) {
+    $key = defined('AUTH_KEY') ? AUTH_KEY : wp_salt('auth');
+    $iv  = substr(md5($key), 0, 16);
+    return base64_encode(openssl_encrypt($plain, 'AES-128-CBC', substr($key, 0, 16), 0, $iv));
+}
+
+function pp_decrypt_pass($encrypted) {
+    if (empty($encrypted)) return '';
+    $key = defined('AUTH_KEY') ? AUTH_KEY : wp_salt('auth');
+    $iv  = substr(md5($key), 0, 16);
+    return openssl_decrypt(base64_decode($encrypted), 'AES-128-CBC', substr($key, 0, 16), 0, $iv);
+}
+
+function pp_get_xtream_creds($user_id) {
+    $user_id = (int) $user_id;
+    $xtream_user = get_user_meta($user_id, 'pp_client_id', true);
+    $encrypted   = get_user_meta($user_id, 'pp_xtream_pass', true);
+    $xtream_pass = $encrypted ? pp_decrypt_pass($encrypted) : '';
+    $package     = get_user_meta($user_id, 'pp_subscription_package', true);
+    $sub_end     = get_user_meta($user_id, 'pp_subscription_end', true);
+    return [
+        'xtream_user' => $xtream_user ?: '',
+        'xtream_pass' => $xtream_pass,
+        'package'     => $package ?: '',
+        'sub_end'     => $sub_end ? (int) $sub_end : 0,
+    ];
+}
+
 /**
  * 1. IP cím fenséges és szigorú lekérdezése
  * Mert nem dőlünk be minden ócska proxy hamisításnak!

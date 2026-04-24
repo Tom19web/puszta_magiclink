@@ -8,27 +8,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// ── Xtream jelszó titkosítás/dekriptálás ─────────────────────
-
-function pp_encrypt_pass($plain) {
-    $key = defined('AUTH_KEY') ? AUTH_KEY : wp_salt('auth');
-    $iv  = substr(md5($key), 0, 16);
-    return base64_encode(openssl_encrypt($plain, 'AES-128-CBC', substr($key, 0, 16), 0, $iv));
-}
-
-function pp_decrypt_pass($encrypted) {
-    if (empty($encrypted)) return '';
-    $key = defined('AUTH_KEY') ? AUTH_KEY : wp_salt('auth');
-    $iv  = substr(md5($key), 0, 16);
-    return openssl_decrypt(base64_decode($encrypted), 'AES-128-CBC', substr($key, 0, 16), 0, $iv);
-}
-
-function pp_get_xtream_pass($user_id) {
-    $encrypted = get_user_meta($user_id, 'pp_xtream_pass', true);
-    if (!$encrypted) return '';
-    return pp_decrypt_pass($encrypted);
-}
-
 /**
  * 1. A PusztaPlay extra adatmezők megjelenítése a profilban
  */
