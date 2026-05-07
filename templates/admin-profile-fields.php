@@ -46,4 +46,11 @@
             <p class="description">Amikor az illúzió szertefoszlik.</p>
         </td>
     </tr>
+    <tr>
+        <th><label for="pp_phone">Telefonszám</label></th>
+        <td>
+            <input type="tel" name="pp_phone" id="pp_phone" value="<?php echo esc_attr($phone); ?>" class="regular-text" />
+            <p class="description">A halandó elérhetősége, ha a galamb posta nem működik.</p>
+        </td>
+    </tr>
 </table>

@@ -36,6 +36,7 @@ function pp_render_new_member_page() {
             $package   = sanitize_text_field($_POST['package']);
             $expiry    = sanitize_text_field($_POST['expiry']);
             $client_id = sanitize_text_field($_POST['client_id']);
+            $phone     = isset($_POST['phone']) ? sanitize_text_field($_POST['phone']) : '';
 
             if (!is_email($email)) {
                 $message = '<div class="notice notice-error"><p>Érvénytelen e-mail cím! Talán ellenőrizd, hova pötyögsz.</p></div>';
@@ -62,6 +63,7 @@ function pp_render_new_member_page() {
                     
                     update_user_meta($user_id, 'pp_subscription_package', $package);
                     update_user_meta($user_id, 'pp_client_id', $client_id);
+                    update_user_meta($user_id, 'pp_phone', $phone);
                     
                     if (!empty($expiry)) {
                         update_user_meta($user_id, 'pp_subscription_end', strtotime($expiry . ' 23:59:59'));

@@ -23,6 +23,7 @@ function pp_render_extra_profile_fields($user) {
     $date_value        = $sub_end_timestamp ? date('Y-m-d', $sub_end_timestamp) : '';
     $client_id         = get_user_meta($user->ID, 'pp_client_id', true);
     $selected_package  = get_user_meta($user->ID, 'pp_subscription_package', true);
+    $phone             = get_user_meta($user->ID, 'pp_phone', true);
 
     $options         = get_option('pp_smtp_settings');
     $options         = is_array($options) ? $options : array();
@@ -74,6 +75,10 @@ function pp_save_extra_profile_fields($user_id) {
         } else {
             delete_user_meta($user_id, 'pp_subscription_package');
         }
+    }
+
+    if (isset($_POST['pp_phone'])) {
+        update_user_meta($user_id, 'pp_phone', sanitize_text_field($_POST['pp_phone']));
     }
 }
 

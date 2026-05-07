@@ -1,7 +1,7 @@
 <?php
 /**
  * PusztaPlay Magic Login — REST API
- * QR-kódos TV bejelentkezés végpontjai
+ * QR-kódos TV bejelentkezés, profil szinkronizáció
  */
 
 if (!defined('ABSPATH')) exit;
@@ -9,12 +9,14 @@ if (!defined('ABSPATH')) exit;
 add_action('rest_api_init', 'pp_register_rest_routes');
 
 function pp_register_rest_routes() {
+  // QR kód igénylés
   register_rest_route('pusztaplay/v1', '/qr-request', [
     'methods'             => 'POST',
     'callback'            => 'pp_rest_qr_request',
     'permission_callback' => '__return_true',
   ]);
 
+  // QR kód poll (bejelentkezés állapotának lekérése)
   register_rest_route('pusztaplay/v1', '/qr-poll', [
     'methods'             => 'GET',
     'callback'            => 'pp_rest_qr_poll',
@@ -26,7 +28,61 @@ function pp_register_rest_routes() {
       ],
     ],
   ]);
+
+  // Profilok lekérése / mentése
+  register_rest_route('pusztaplay/v1', '/profiles', [
+    'methods'             => 'GET',
+    'callback'            => 'pp_rest_get_profiles',
+    'permission_callback' => '__return_true',
+    'args' => [
+      'api_key' => [
+        'required'          => true,
+        'sanitize_callback' => 'sanitize_text_field',
+      ],
+    ],
+  ]);
+
+  register_rest_route('pusztaplay/v1', '/profiles', [
+    'methods'             => 'POST',
+    'callback'            => 'pp_rest_save_profiles',
+    'permission_callback' => '__return_true',
+    'args' => [
+      'api_key' => [
+        'required'          => true,
+        'sanitize_callback' => 'sanitize_text_field',
+      ],
+    ],
+  ]);
+
+  register_rest_route('pusztaplay/v1', '/profile', [
+    'methods'             => 'POST',
+    'callback'            => 'pp_rest_save_single_profile',
+    'permission_callback' => '__return_true',
+    'args' => [
+      'api_key' => [
+        'required'          => true,
+        'sanitize_callback' => 'sanitize_text_field',
+      ],
+    ],
+  ]);
 }
+
+/**
+ * API key validálás — visszaadja a user_id-t vagy hibát
+ */
+function pp_validate_api_key($api_key) {
+  global $wpdb;
+  $user_id = $wpdb->get_var($wpdb->prepare(
+    "SELECT user_id FROM $wpdb->usermeta WHERE meta_key = 'pp_api_key' AND meta_value = %s LIMIT 1",
+    $api_key
+  ));
+  if (!$user_id) {
+    return new WP_Error('invalid_key', 'Érvénytelen API kulcs.', ['status' => 401]);
+  }
+  return (int) $user_id;
+}
+
+// ─── QR kódok ─────────────────────────────────────
 
 function pp_rest_qr_request() {
   $code = strtoupper(wp_generate_password(8, false));
@@ -60,6 +116,10 @@ function pp_rest_qr_poll($request) {
       'status'      => 'authenticated',
       'xtream_user' => $data['xtream_user'],
       'xtream_pass' => $data['xtream_pass'],
+      'user_email'  => $data['user_email'] ?? '',
+      'nickname'    => $data['nickname'] ?? '',
+      'phone'       => $data['phone'] ?? '',
+      'api_key'     => $data['api_key'] ?? '',
       'package'     => $data['package'] ?? '',
       'sub_end'     => $data['sub_end'] ?? 0,
     ];
@@ -68,4 +128,137 @@ function pp_rest_qr_poll($request) {
   }
 
   return new WP_REST_Response(['status' => 'pending'], 200);
+}
+
+// ─── Profilok — GET (összes profil lekérése) ──────
+
+function pp_rest_get_profiles($request) {
+  $api_key = $request->get_param('api_key');
+  $user_id = pp_validate_api_key($api_key);
+  if (is_wp_error($user_id)) {
+    return new WP_REST_Response(['error' => $user_id->get_error_message()], $user_id->get_error_data()['status']);
+  }
+
+  $profiles = get_user_meta($user_id, 'pp_profiles', true);
+  if (empty($profiles)) {
+    $profiles = [];
+  }
+
+  // Also include user-level watch progress (VOD/series positions)
+  $watch_progress = get_user_meta($user_id, 'pp_watch_progress', true);
+  if (empty($watch_progress)) {
+    $watch_progress = [];
+  }
+
+  return new WP_REST_Response([
+    'profiles'       => $profiles,
+    'watch_progress' => $watch_progress,
+  ], 200);
+}
+
+// ─── Profilok — POST (összes profil cseréje) ──────
+
+function pp_rest_save_profiles($request) {
+  $api_key = $request->get_param('api_key');
+  $user_id = pp_validate_api_key($api_key);
+  if (is_wp_error($user_id)) {
+    return new WP_REST_Response(['error' => $user_id->get_error_message()], $user_id->get_error_data()['status']);
+  }
+
+  $body = json_decode($request->get_body(), true);
+  if (!$body) {
+    return new WP_REST_Response(['error' => 'Érvénytelen JSON.'], 400);
+  }
+
+  if (isset($body['profiles'])) {
+    update_user_meta($user_id, 'pp_profiles', $body['profiles']);
+  }
+
+  if (isset($body['watch_progress'])) {
+    update_user_meta($user_id, 'pp_watch_progress', $body['watch_progress']);
+  }
+
+  return new WP_REST_Response(['success' => true], 200);
+}
+
+// ─── Profil — POST (egyedi profil mentése / létrehozás / törlés) ──
+
+function pp_rest_save_single_profile($request) {
+  $api_key    = $request->get_param('api_key');
+  $user_id    = pp_validate_api_key($api_key);
+  if (is_wp_error($user_id)) {
+    return new WP_REST_Response(['error' => $user_id->get_error_message()], $user_id->get_error_data()['status']);
+  }
+
+  $body       = json_decode($request->get_body(), true);
+  $action     = $body['action'] ?? 'save';
+  $profile_id = $body['profile_id'] ?? '';
+
+  if (empty($profile_id) && $action !== 'create') {
+    return new WP_REST_Response(['error' => 'Hiányzó profile_id.'], 400);
+  }
+
+  $profiles = get_user_meta($user_id, 'pp_profiles', true);
+  if (empty($profiles) || !is_array($profiles)) {
+    $profiles = [];
+  }
+
+  switch ($action) {
+    case 'create':
+      if (count($profiles) >= 3) {
+        return new WP_REST_Response(['error' => 'Maximum 3 profil hozható létre.'], 400);
+      }
+      $new_id = 'prof_' . uniqid();
+      $profiles[] = [
+        'id'            => $new_id,
+        'name'          => $body['name'] ?? ('Profil ' . (count($profiles) + 1)),
+        'color'         => $body['color'] ?? '#ffcc00',
+        'favorites'     => [],
+        'watch_later'   => [],
+        'watch_progress' => [],
+      ];
+      update_user_meta($user_id, 'pp_profiles', $profiles);
+      return new WP_REST_Response(['profile_id' => $new_id, 'profiles' => $profiles], 200);
+
+    case 'delete':
+      $profiles = array_values(array_filter($profiles, function($p) use ($profile_id) {
+        return $p['id'] !== $profile_id;
+      }));
+      update_user_meta($user_id, 'pp_profiles', $profiles);
+      return new WP_REST_Response(['success' => true, 'profiles' => $profiles], 200);
+
+    case 'save':
+    default:
+      $found = false;
+      foreach ($profiles as &$p) {
+        if ($p['id'] === $profile_id) {
+          if (isset($body['name']))  $p['name']  = sanitize_text_field($body['name']);
+          if (isset($body['color'])) $p['color'] = sanitize_text_field($body['color']);
+          if (isset($body['favorites']))     $p['favorites']     = $body['favorites'];
+          if (isset($body['watch_later']))   $p['watch_later']   = $body['watch_later'];
+          if (isset($body['watch_progress'])) $p['watch_progress'] = $body['watch_progress'];
+          $found = true;
+          break;
+        }
+      }
+      unset($p);
+
+      if (!$found) {
+        return new WP_REST_Response(['error' => 'Profil nem található.'], 404);
+      }
+
+      update_user_meta($user_id, 'pp_profiles', $profiles);
+
+      // Sync watch_progress to global key too (for cross-profile resume)
+      $all_progress = [];
+      foreach ($profiles as $pf) {
+        foreach ($pf['watch_progress'] ?? [] as $wp) {
+          $key = $wp['key'] ?? '';
+          if ($key) $all_progress[$key] = $wp;
+        }
+      }
+      update_user_meta($user_id, 'pp_watch_progress', array_values($all_progress));
+
+      return new WP_REST_Response(['success' => true], 200);
+  }
 }

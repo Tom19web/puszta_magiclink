@@ -21,6 +21,10 @@
                 <td><input type="text" name="client_id" class="regular-text" placeholder="pl. PP-1024"></td>
             </tr>
             <tr>
+                <th><label>Telefonszám</label></th>
+                <td><input type="tel" name="phone" class="regular-text" placeholder="pl. +36701234567"></td>
+            </tr>
+            <tr>
                 <th><label>Csomag</label></th>
                 <td>
                     <select name="package">

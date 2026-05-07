@@ -131,6 +131,21 @@ function pp_handle_tv_auth() {
         $data['xtream_pass'] = $creds['xtream_pass'];
         $data['package']     = $creds['package'];
         $data['sub_end']     = $creds['sub_end'];
+
+        // Add WordPress user info for the TV app
+        $wp_user = get_userdata($user_id);
+        $data['user_email'] = $wp_user ? $wp_user->user_email : '';
+        $data['nickname']   = get_user_meta($user_id, 'nickname', true);
+        $data['phone']      = get_user_meta($user_id, 'pp_phone', true);
+
+        // Generate or reuse API key for app REST calls
+        $api_key = get_user_meta($user_id, 'pp_api_key', true);
+        if (empty($api_key)) {
+          $api_key = wp_generate_password(24, false);
+          update_user_meta($user_id, 'pp_api_key', $api_key);
+        }
+        $data['api_key'] = $api_key;
+
         set_transient($transient_key, $data, 5 * MINUTE_IN_SECONDS);
 
         include PP_MAGIC_DIR . 'templates/tv-auth-confirm.php';
