@@ -3,7 +3,7 @@ Contributors: PusztaPlay
 Tags: magic login, passwordless, security, crm, tv, iptv, xtream, qr, profiles
 Requires at least: 5.8
 Tested up to: 6.5
-Stable tag: 2.1
+Stable tag: 2.2
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -20,6 +20,7 @@ Felejtsd el a jelszavakat! A PusztaPlay Auth + CRM elhozza a kényelem és a kí
 * **Xtream API integráció:** Szerveroldali account info (regisztráció, lejárat, kapcsolatok, trial státusz) — 5 perces cache
 * **Profil szinkronizáció:** Netflix-stílusú profilok a FireTV app-hoz (REST API: létrehozás, mentés, törlés)
 * **Dashboard profilkezelés:** Profilok törlése, kedvencek/megnézendők törlése a WP felületről
+* **Lejárati emlékeztető:** Automatikus napi ellenőrzés + e-mail értesítés (alapból kikapcsolva)
 * **Golyóálló biztonság:** Hashelt tokenek, rate-limiting, IP brute-force védelem
 * **Admin felület:** Felhasználói lista extra oszlopokkal, profil extra mezők, új tag felvétele
 * **SMTP konfiguráció:** Egyedi email kiszolgáló a magic link-ekhez
@@ -49,6 +50,14 @@ Felejtsd el a jelszavakat! A PusztaPlay Auth + CRM elhozza a kényelem és a kí
 5. Kész!
 
 == Changelog ==
+
+= 2.2 =
+* ÚJ: Előfizetés lejárati emlékeztető — napi WP Cron, testreszabható e-mail sablonnal
+* ÚJ: Admin beállítások: emlékeztető ki/bekapcsolás, hány nappal előtte, egyedi tárgy és HTML szöveg
+* ÚJ: {name}, {email}, {package}, {expiry_date}, {days_left}, {dashboard_url} helykitöltők az e-mailben
+* ÚJ: Duplikáció védelem: minden lejárati időpontra csak egyszer küld
+* BIZTONSÁG: Admin settings sanitize callback (wp_kses_post HTML szöveghez)
+* ALAPÉRTELMEZÉS: Emlékeztető KI van kapcsolva, nehogy véletlenül kimenjen
 
 = 2.1 =
 * ÚJ: Plugin átnevezve "PusztaPlay Auth + CRM Plugin"-ra

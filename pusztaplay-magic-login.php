@@ -2,7 +2,7 @@
 /*
 Plugin Name: PusztaPlay Auth + CRM Plugin
 Description: Biztonságos jelszó nélküli bejelentkezés, QR TV auth, előfizetés-kezelő CRM, profil szinkronizáció, emlékeztetők és számlázás. (Golyóálló és Elegáns verzió)
-Version: 2.1
+Version: 2.2
 Author: PusztaPlay
 */
 
@@ -12,7 +12,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Alapvető konstansok
-define('PP_MAGIC_VERSION', '2.1');
+define('PP_MAGIC_VERSION', '2.2');
 define('PP_MAGIC_DIR', plugin_dir_path(__FILE__));
 define('PP_MAGIC_URL', plugin_dir_url(__FILE__));
 define('PP_XTREAM_SERVER', 'https://live.pusztaplay.eu');
@@ -39,7 +39,10 @@ require_once PP_MAGIC_DIR . 'includes/shortcodes.php';
 // 6. AJAX handlerek (profil törlés, kedvencek törlése a dashboardról)
 require_once PP_MAGIC_DIR . 'includes/ajax-handlers.php';
 
-// 7. Adminisztrációs modulok
+// 7. Cron emlékeztetők (előfizetés lejárat)
+require_once PP_MAGIC_DIR . 'includes/cron-reminders.php';
+
+// 8. Adminisztrációs modulok
 if (is_admin()) {
     require_once PP_MAGIC_DIR . 'includes/admin-settings.php';
     require_once PP_MAGIC_DIR . 'includes/admin-profile.php';
@@ -48,11 +51,15 @@ if (is_admin()) {
 }
 
 /**
- * 8. Aktivációs hook
+ * 9. Aktivációs hook + Cron regisztrálás
  */
 register_activation_hook(__FILE__, 'pp_magic_login_activate');
+register_deactivation_hook(__FILE__, 'pp_reminder_clear_schedule');
 
 function pp_magic_login_activate() {
+    // Cron ütemezés
+    pp_reminder_schedule_event();
+
     $author_id = 1;
 
     if (!get_page_by_path('belepes')) {

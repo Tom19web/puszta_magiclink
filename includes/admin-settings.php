@@ -30,7 +30,42 @@ add_action('admin_init', 'pp_register_magic_login_settings');
 
 function pp_register_magic_login_settings() {
     // Egyetlen csomagba (tömbbe) mentjük az összes beállítást. Milyen elegáns!
-    register_setting('pp_magic_login_group', 'pp_smtp_settings');
+    register_setting('pp_magic_login_group', 'pp_smtp_settings', [
+        'sanitize_callback' => 'pp_sanitize_pp_settings',
+    ]);
+}
+
+function pp_sanitize_pp_settings($input) {
+    $clean = is_array($input) ? $input : [];
+
+    // SMTP mezők
+    if (isset($clean['host']))         $clean['host']         = sanitize_text_field($clean['host']);
+    if (isset($clean['port']))         $clean['port']         = absint($clean['port']);
+    if (isset($clean['user']))         $clean['user']         = sanitize_email($clean['user']);
+    if (isset($clean['pass']))         $clean['pass']         = sanitize_text_field($clean['pass']);
+    if (isset($clean['from_email']))   $clean['from_email']   = sanitize_email($clean['from_email']);
+    if (isset($clean['from_name']))    $clean['from_name']    = sanitize_text_field($clean['from_name']);
+    if (isset($clean['packages']))     $clean['packages']     = sanitize_text_field($clean['packages']);
+    if (isset($clean['logo_url']))     $clean['logo_url']     = esc_url_raw($clean['logo_url']);
+
+    // Emlékeztető mezők
+    if (isset($clean['reminder_enabled']))
+        $clean['reminder_enabled'] = $clean['reminder_enabled'] ? 1 : 0;
+    else
+        $clean['reminder_enabled'] = 0;
+
+    if (isset($clean['reminder_days_before']))
+        $clean['reminder_days_before'] = max(1, min(30, absint($clean['reminder_days_before'])));
+    else
+        $clean['reminder_days_before'] = 7;
+
+    if (isset($clean['reminder_subject']))
+        $clean['reminder_subject'] = sanitize_text_field($clean['reminder_subject']);
+
+    if (isset($clean['reminder_body']))
+        $clean['reminder_body'] = wp_kses_post($clean['reminder_body']); // engedünk HTML-t, de csak biztonságosat
+
+    return $clean;
 }
 
 /**
