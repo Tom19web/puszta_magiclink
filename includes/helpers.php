@@ -43,6 +43,64 @@ function pp_get_xtream_creds($user_id) {
     ];
 }
 
+// ── Xtream szerveroldali account info lekérése (5 perces cache) ──
+function pp_fetch_xtream_account_info($user_id) {
+    $user_id = (int) $user_id;
+    $cache_key = 'pp_xtream_info_' . $user_id;
+    $cached = get_transient($cache_key);
+    if ($cached !== false) {
+        return $cached;
+    }
+
+    $creds = pp_get_xtream_creds($user_id);
+    if (empty($creds['xtream_user']) || empty($creds['xtream_pass'])) {
+        return new WP_Error('no_creds', 'Nincsenek Xtream credentials-ek.');
+    }
+
+    $server = defined('PP_XTREAM_SERVER') ? PP_XTREAM_SERVER : 'https://live.pusztaplay.eu';
+    $url = trailingslashit($server) . 'player_api.php?username=' . urlencode($creds['xtream_user']) . '&password=' . urlencode($creds['xtream_pass']);
+
+    $response = wp_remote_get($url, [
+        'timeout'     => 10,
+        'user-agent'  => 'PusztaPlay/1.0',
+        'httpversion' => '1.1',
+    ]);
+
+    if (is_wp_error($response)) {
+        return $response;
+    }
+
+    $code = wp_remote_retrieve_response_code($response);
+    if ($code !== 200) {
+        return new WP_Error('api_error', 'Xtream API hiba: HTTP ' . $code);
+    }
+
+    $body = wp_remote_retrieve_body($response);
+    $data = json_decode($body, true);
+    if (!$data || !isset($data['user_info'])) {
+        return new WP_Error('parse_error', 'Érvénytelen Xtream API válasz.');
+    }
+
+    $info = [
+        'username'              => $data['user_info']['username'] ?? $creds['xtream_user'],
+        'password'              => $data['user_info']['password'] ?? '',
+        'message'               => $data['user_info']['message'] ?? '',
+        'auth'                  => !empty($data['user_info']['auth']),
+        'status'                => $data['user_info']['status'] ?? 'Unknown',
+        'exp_date'              => $data['user_info']['exp_date'] ?? '',
+        'is_trial'              => !empty($data['user_info']['is_trial']),
+        'active_cons'           => $data['user_info']['active_cons'] ?? '0',
+        'created_at'            => $data['user_info']['created_at'] ?? '',
+        'max_connections'       => $data['user_info']['max_connections'] ?? '0',
+        'allowed_output_formats'=> isset($data['user_info']['allowed_output_formats']) ? (array) $data['user_info']['allowed_output_formats'] : [],
+        'server_timezone'       => $data['server_info']['timezone'] ?? '',
+        'server_time'           => isset($data['server_info']['timestamp_now']) ? date_i18n('Y-m-d H:i:s', (int) $data['server_info']['timestamp_now']) : '',
+    ];
+
+    set_transient($cache_key, $info, 5 * MINUTE_IN_SECONDS);
+    return $info;
+}
+
 /**
  * 1. IP cím fenséges és szigorú lekérdezése
  * Mert nem dőlünk be minden ócska proxy hamisításnak!

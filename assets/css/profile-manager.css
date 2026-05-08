@@ -1,0 +1,39 @@
+.pp-profile-card {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.pp-profile-card:hover {
+    background: #f0f6fc !important;
+}
+
+.pp-btn {
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+}
+
+.pp-btn:hover {
+    opacity: 0.85;
+}
+
+.pp-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.pp-btn-delete:hover {
+    background: #b52727 !important;
+}
+
+.pp-msg-success {
+    animation: ppFadeIn 0.3s ease;
+}
+
+.pp-msg-error {
+    animation: ppFadeIn 0.3s ease;
+}
+
+@keyframes ppFadeIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}

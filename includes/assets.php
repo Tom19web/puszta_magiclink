@@ -24,9 +24,25 @@ function pp_enqueue_frontend_assets() {
     wp_enqueue_script(
         'pp-magic-frontend-script',
         PP_MAGIC_URL . 'assets/js/frontend.js',
-        array(), 
+        array(),
         PP_MAGIC_VERSION,
         true // Fenségesen a footerbe száműzzük, hogy ne akassza meg a renderelést
+    );
+
+    // Profilkezelő JS + CSS — csak ha a shortcode jelen van az oldalon
+    wp_enqueue_style(
+        'pp-profile-manager-style',
+        PP_MAGIC_URL . 'assets/css/profile-manager.css',
+        array(),
+        PP_MAGIC_VERSION
+    );
+
+    wp_enqueue_script(
+        'pp-profile-manager-script',
+        PP_MAGIC_URL . 'assets/js/profile-manager.js',
+        array(),
+        PP_MAGIC_VERSION,
+        true
     );
 }
 

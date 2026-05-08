@@ -166,6 +166,53 @@ add_shortcode('pusztaplay_vedett', function($atts, $content = null) {
 });
 
 /**
+ * 11. Szolgáltatás oldali infók [pusztaplay_service_info]
+ */
+add_shortcode('pusztaplay_service_info', 'pp_render_service_info_shortcode');
+
+function pp_render_service_info_shortcode() {
+    if (!is_user_logged_in()) return '';
+    ob_start();
+    $user_id = get_current_user_id();
+    $xtream_info = pp_fetch_xtream_account_info($user_id);
+    $sub_end_timestamp = get_user_meta($user_id, 'pp_subscription_end', true);
+    $package_meta      = get_user_meta($user_id, 'pp_subscription_package', true);
+    $sub_package = !empty($package_meta) ? $package_meta : 'Nincs megadva';
+
+    if ($sub_end_timestamp) {
+        $sub_end_date = date_i18n('Y. F j.', $sub_end_timestamp);
+        $sub_status   = (time() > $sub_end_timestamp) ? 'lejárt' : 'aktív';
+    } else {
+        $sub_end_date = 'Nincs beállítva';
+        $sub_status   = 'inaktív';
+    }
+
+    include PP_MAGIC_DIR . 'templates/frontend-service-info.php';
+    return ob_get_clean();
+}
+
+/**
+ * 12. Profilkezelő [pusztaplay_profile_manager]
+ */
+add_shortcode('pusztaplay_profile_manager', 'pp_render_profile_manager_shortcode');
+
+function pp_render_profile_manager_shortcode() {
+    if (!is_user_logged_in()) return '';
+    ob_start();
+    $user_id  = get_current_user_id();
+    $profiles = get_user_meta($user_id, 'pp_profiles', true);
+    if (empty($profiles) || !is_array($profiles)) {
+        $profiles = [];
+    }
+
+    $nonce = wp_create_nonce('pp_profile_manager_nonce');
+    $ajax_url = admin_url('admin-ajax.php');
+
+    include PP_MAGIC_DIR . 'templates/frontend-profile-manager.php';
+    return ob_get_clean();
+}
+
+/**
  * 4. Kijelentkezés lekezelése (Kivételesen itt maradhat, mint egy frontend action)
  */
 add_action('template_redirect', 'pp_custom_logout_handler');

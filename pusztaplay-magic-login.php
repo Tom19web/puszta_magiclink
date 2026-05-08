@@ -1,42 +1,45 @@
 <?php
 /*
-Plugin Name: PusztaPlay Magic Login
-Description: Biztonságos bejelentkezés jelszó nélkül, e-mailben küldött egyszer használatos linkkel. (Golyóálló és Elegáns verzió)
-Version: 2.0
+Plugin Name: PusztaPlay Auth + CRM Plugin
+Description: Biztonságos jelszó nélküli bejelentkezés, QR TV auth, előfizetés-kezelő CRM, profil szinkronizáció, emlékeztetők és számlázás. (Golyóálló és Elegáns verzió)
+Version: 2.1
 Author: PusztaPlay
 */
 
-// Közvetlen hozzáférés tiltása - mert nem vagyunk barbárok, akik nyitva hagyják az ajtót
+// Közvetlen hozzáférés tiltása
 if (!defined('ABSPATH')) {
     exit;
 }
 
-// Alapvető konstansok definiálása, hogy ne kelljen folyton elérési utakkal bohóckodnunk
-define('PP_MAGIC_VERSION', '2.0');
+// Alapvető konstansok
+define('PP_MAGIC_VERSION', '2.1');
 define('PP_MAGIC_DIR', plugin_dir_path(__FILE__));
 define('PP_MAGIC_URL', plugin_dir_url(__FILE__));
+define('PP_XTREAM_SERVER', 'https://live.pusztaplay.eu');
 
 /**
  * A Csodálatos, Új Modulok Betöltése
- * Logikai sorrendben, ahogy a kis pedáns lelked kívánja.
  */
 
-// 1. Segédfüggvények (IP lekérdezés, központi logolás)
+// 1. Segédfüggvények
 require_once PP_MAGIC_DIR . 'includes/helpers.php';
 
-// 2. Assetek (CSS, JS) kulturált regisztrálása
+// 2. Assetek (CSS, JS)
 require_once PP_MAGIC_DIR . 'includes/assets.php';
 
-// 3. Autentikáció és beléptetés (A sötét mágia motorja)
+// 3. Autentikáció
 require_once PP_MAGIC_DIR . 'includes/auth.php';
 
-// 4. REST API (QR kódos TV bejelentkezés)
+// 4. REST API
 require_once PP_MAGIC_DIR . 'includes/rest-api.php';
 
-// 5. Shortcode-ok (A frontend megjelenés és a csillogás)
+// 5. Shortcode-ok
 require_once PP_MAGIC_DIR . 'includes/shortcodes.php';
 
-// 5. Adminisztrációs modulok - Micsoda elegancia: csak akkor töltjük be, ha az adminban vagyunk!
+// 6. AJAX handlerek (profil törlés, kedvencek törlése a dashboardról)
+require_once PP_MAGIC_DIR . 'includes/ajax-handlers.php';
+
+// 7. Adminisztrációs modulok
 if (is_admin()) {
     require_once PP_MAGIC_DIR . 'includes/admin-settings.php';
     require_once PP_MAGIC_DIR . 'includes/admin-profile.php';
@@ -45,32 +48,31 @@ if (is_admin()) {
 }
 
 /**
- * 6. Aktivációs hook (A telepítő)
- * Ezt is ki lehetne szervezni, de egyelőre elfér itt, hogy meglegyen a "belepes" és "vezerlopult" oldalad.
+ * 8. Aktivációs hook
  */
 register_activation_hook(__FILE__, 'pp_magic_login_activate');
 
 function pp_magic_login_activate() {
-    $author_id = 1; 
-    
+    $author_id = 1;
+
     if (!get_page_by_path('belepes')) {
         wp_insert_post(array(
-            'post_title'   => 'Belépés', 
-            'post_name'    => 'belepes', 
-            'post_content' => '[pusztaplay_login]', 
-            'post_status'  => 'publish', 
-            'post_type'    => 'page', 
+            'post_title'   => 'Belépés',
+            'post_name'    => 'belepes',
+            'post_content' => '[pusztaplay_login]',
+            'post_status'  => 'publish',
+            'post_type'    => 'page',
             'post_author'  => $author_id
         ));
     }
-    
+
     if (!get_page_by_path('vezerlopult')) {
         wp_insert_post(array(
-            'post_title'   => 'Vezérlőpult', 
-            'post_name'    => 'vezerlopult', 
-            'post_content' => '[pusztaplay_dashboard]', 
-            'post_status'  => 'publish', 
-            'post_type'    => 'page', 
+            'post_title'   => 'Vezérlőpult',
+            'post_name'    => 'vezerlopult',
+            'post_content' => "[pusztaplay_dashboard]\n\n[pusztaplay_service_info]\n\n[pusztaplay_profile_manager]",
+            'post_status'  => 'publish',
+            'post_type'    => 'page',
             'post_author'  => $author_id
         ));
     }
