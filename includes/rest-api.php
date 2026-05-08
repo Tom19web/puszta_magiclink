@@ -54,6 +54,19 @@ function pp_register_rest_routes() {
     ],
   ]);
 
+  // Felhasználói adatok lekérése
+  register_rest_route('pusztaplay/v1', '/user', [
+    'methods'             => 'GET',
+    'callback'            => 'pp_rest_get_user',
+    'permission_callback' => '__return_true',
+    'args' => [
+      'api_key' => [
+        'required'          => true,
+        'sanitize_callback' => 'sanitize_text_field',
+      ],
+    ],
+  ]);
+
   register_rest_route('pusztaplay/v1', '/profile', [
     'methods'             => 'POST',
     'callback'            => 'pp_rest_save_single_profile',
@@ -261,4 +274,26 @@ function pp_rest_save_single_profile($request) {
 
       return new WP_REST_Response(['success' => true], 200);
   }
+}
+
+// ─── Felhasználói adatok lekérése (apiKey alapján) ──
+function pp_rest_get_user($request) {
+  $api_key = $request->get_param('api_key');
+  $user_id = pp_validate_api_key($api_key);
+  if (is_wp_error($user_id)) {
+    return new WP_REST_Response(['error' => $user_id->get_error_message()], $user_id->get_error_data()['status']);
+  }
+
+  $user = get_userdata($user_id);
+  $creds = pp_get_xtream_creds($user_id);
+
+  return new WP_REST_Response([
+    'email'       => $user ? $user->user_email : '',
+    'nickname'    => get_user_meta($user_id, 'nickname', true) ?: $user->display_name,
+    'phone'       => get_user_meta($user_id, 'pp_phone', true) ?: '',
+    'xtream_user' => $creds['xtream_user'],
+    'xtream_pass' => $creds['xtream_pass'],
+    'package'     => $creds['package'],
+    'sub_end'     => $creds['sub_end'],
+  ], 200);
 }
