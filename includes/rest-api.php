@@ -67,6 +67,13 @@ function pp_register_rest_routes() {
     ],
   ]);
 
+  // Közvetlen bejelentkezés email + WordPress jelszóval (teszteléshez)
+  register_rest_route('pusztaplay/v1', '/auth', [
+    'methods'             => 'POST',
+    'callback'            => 'pp_rest_direct_auth',
+    'permission_callback' => '__return_true',
+  ]);
+
   register_rest_route('pusztaplay/v1', '/profile', [
     'methods'             => 'POST',
     'callback'            => 'pp_rest_save_single_profile',
@@ -293,6 +300,47 @@ function pp_rest_get_user($request) {
     'phone'       => get_user_meta($user_id, 'pp_phone', true) ?: '',
     'xtream_user' => $creds['xtream_user'],
     'xtream_pass' => $creds['xtream_pass'],
+    'package'     => $creds['package'],
+    'sub_end'     => $creds['sub_end'],
+  ], 200);
+}
+
+// ─── Közvetlen bejelentkezés email + WP jelszóval ───
+function pp_rest_direct_auth($request) {
+  $body = json_decode($request->get_body(), true);
+  $email = sanitize_email($body['email'] ?? '');
+  $password = $body['password'] ?? '';
+
+  if (!is_email($email) || empty($password)) {
+    return new WP_REST_Response(['error' => 'Email és jelszó megadása kötelező.'], 400);
+  }
+
+  $user = wp_authenticate($email, $password);
+  if (is_wp_error($user)) {
+    return new WP_REST_Response(['error' => 'Érvénytelen email vagy jelszó.'], 401);
+  }
+
+  $user_id = $user->ID;
+  $creds = pp_get_xtream_creds($user_id);
+
+  if (empty($creds['xtream_user']) || empty($creds['xtream_pass'])) {
+    return new WP_REST_Response(['error' => 'Nincsenek Xtream credentials-ek ehhez a fiókhoz.'], 404);
+  }
+
+  // Generate or reuse apiKey
+  $api_key = get_user_meta($user_id, 'pp_api_key', true);
+  if (empty($api_key)) {
+    $api_key = wp_generate_password(32, false);
+    update_user_meta($user_id, 'pp_api_key', $api_key);
+  }
+
+  return new WP_REST_Response([
+    'xtream_user' => $creds['xtream_user'],
+    'xtream_pass' => $creds['xtream_pass'],
+    'email'       => $user->user_email,
+    'nickname'    => get_user_meta($user_id, 'nickname', true) ?: $user->display_name,
+    'phone'       => get_user_meta($user_id, 'pp_phone', true) ?: '',
+    'api_key'     => $api_key,
     'package'     => $creds['package'],
     'sub_end'     => $creds['sub_end'],
   ], 200);
