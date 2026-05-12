@@ -148,18 +148,25 @@ function pp_handle_tv_auth() {
 
         set_transient($transient_key, $data, 5 * MINUTE_IN_SECONDS);
 
-        include PP_MAGIC_DIR . 'templates/tv-auth-confirm.php';
+        // Régi: include PP_MAGIC_DIR . 'templates/tv-auth-confirm.php';
+        include PP_MAGIC_DIR . 'templates/tv-auth-minimal.php';
         exit;
     }
 
     // Ha be van lépve, rögtön mutassuk a confirm gombot
     if (is_user_logged_in()) {
         $confirm_link = add_query_arg(['pp_tv' => $code, 'pp_tv_confirm' => '1']);
-        include PP_MAGIC_DIR . 'templates/tv-auth-confirm.php';
+        // Régi: include PP_MAGIC_DIR . 'templates/tv-auth-confirm.php';
+        include PP_MAGIC_DIR . 'templates/tv-auth-minimal.php';
         exit;
     }
 
     // Nincs bejelentkezve → redirect a magic link oldalra
-    wp_safe_redirect(home_url('/belepes/?redirect_to=' . rawurlencode(add_query_arg('pp_tv', $code))));
+    // ⬇ KIKOMMENTEZVE — auth-only minimal template váltotta fel (Amazon IAP policy)
+    // wp_safe_redirect(home_url('/belepes/?redirect_to=' . rawurlencode(add_query_arg('pp_tv', $code))));
+    // exit;
+
+    // ÚJ: Minimal auth template — nincs WP fejléc/lábléc, nincs külső link
+    include PP_MAGIC_DIR . 'templates/tv-auth-minimal.php';
     exit;
 }
