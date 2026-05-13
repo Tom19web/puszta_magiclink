@@ -37,12 +37,20 @@ function pp_register_magic_login_settings() {
 
 function pp_sanitize_pp_settings($input) {
     $clean = is_array($input) ? $input : [];
+    $old   = get_option('pp_smtp_settings', []);
 
     // SMTP mezők
     if (isset($clean['host']))         $clean['host']         = sanitize_text_field($clean['host']);
     if (isset($clean['port']))         $clean['port']         = absint($clean['port']);
     if (isset($clean['user']))         $clean['user']         = sanitize_email($clean['user']);
-    if (isset($clean['pass']))         $clean['pass']         = sanitize_text_field($clean['pass']);
+    // Jelszó: ha üresen érkezik, tartsuk meg a régit; ha van új, titkosítsuk
+    if (isset($clean['pass'])) {
+        if (empty($clean['pass'])) {
+            $clean['pass'] = $old['pass'] ?? '';
+        } else {
+            $clean['pass'] = pp_encrypt_pass($clean['pass']);
+        }
+    }
     if (isset($clean['from_email']))   $clean['from_email']   = sanitize_email($clean['from_email']);
     if (isset($clean['from_name']))    $clean['from_name']    = sanitize_text_field($clean['from_name']);
     if (isset($clean['packages']))     $clean['packages']     = sanitize_text_field($clean['packages']);
@@ -109,7 +117,7 @@ function pp_configure_smtp($phpmailer) {
     $phpmailer->Port       = absint($options['port']);
     $phpmailer->SMTPSecure = ($options['port'] == 465) ? 'ssl' : 'tls';
     $phpmailer->Username   = sanitize_text_field($options['user']);
-    $phpmailer->Password   = sanitize_text_field($options['pass']); // Biztonságos környezetben ezt titkosítva tárolnánk, de neked ez is megteszi.
+    $phpmailer->Password   = pp_decrypt_pass($options['pass']);
     $phpmailer->From       = sanitize_email($options['from_email']);
     $phpmailer->FromName   = sanitize_text_field($options['from_name']);
 }

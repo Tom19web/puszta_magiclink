@@ -32,7 +32,7 @@
             <tr>
                 <th scope="row"><label>Jelszó (SMTP)</label></th>
                 <td>
-                    <input type="password" name="pp_smtp_settings[pass]" value="<?php echo esc_attr(isset($options['pass']) ? $options['pass'] : ''); ?>" class="regular-text">
+                    <input type="password" name="pp_smtp_settings[pass]" value="" placeholder="<?php echo !empty($options['pass']) ? '•••••• (írd át ha módosítani akarod)' : 'Add meg az SMTP jelszót'; ?>" class="regular-text">
                 </td>
             </tr>
             <tr>

@@ -67,6 +67,7 @@ function pp_verify_magic_link() {
         
         // Linkszkenner védelem: A "Kattints a belépéshez" köztes állomás
         if (!isset($_GET['pp_confirm']) && $user_id) {
+            header('Referrer-Policy: no-referrer');
             ob_start();
             $confirm_link = add_query_arg(['pp_magic_token' => $raw_token, 'pp_confirm' => '1']);
             include PP_MAGIC_DIR . 'templates/message-card.php'; // Ide jön az a kártya, ami eddig a stringben rohadt
@@ -148,7 +149,7 @@ function pp_handle_tv_auth() {
 
         set_transient($transient_key, $data, 5 * MINUTE_IN_SECONDS);
 
-        // Régi: include PP_MAGIC_DIR . 'templates/tv-auth-confirm.php';
+        header('Referrer-Policy: no-referrer');
         include PP_MAGIC_DIR . 'templates/tv-auth-minimal.php';
         exit;
     }
@@ -156,7 +157,7 @@ function pp_handle_tv_auth() {
     // Ha be van lépve, rögtön mutassuk a confirm gombot
     if (is_user_logged_in()) {
         $confirm_link = add_query_arg(['pp_tv' => $code, 'pp_tv_confirm' => '1']);
-        // Régi: include PP_MAGIC_DIR . 'templates/tv-auth-confirm.php';
+        header('Referrer-Policy: no-referrer');
         include PP_MAGIC_DIR . 'templates/tv-auth-minimal.php';
         exit;
     }
@@ -167,6 +168,7 @@ function pp_handle_tv_auth() {
     // exit;
 
     // ÚJ: Minimal auth template — nincs WP fejléc/lábléc, nincs külső link
+    header('Referrer-Policy: no-referrer');
     include PP_MAGIC_DIR . 'templates/tv-auth-minimal.php';
     exit;
 }

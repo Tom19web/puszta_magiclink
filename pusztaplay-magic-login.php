@@ -60,7 +60,7 @@ function pp_magic_login_activate() {
     // Cron ütemezés
     pp_reminder_schedule_event();
 
-    $author_id = 1;
+    $author_id = get_current_user_id() ?: 1;
 
     if (!get_page_by_path('belepes')) {
         wp_insert_post(array(

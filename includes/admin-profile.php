@@ -24,6 +24,9 @@ function pp_render_extra_profile_fields($user) {
     $client_id         = get_user_meta($user->ID, 'pp_client_id', true);
     $selected_package  = get_user_meta($user->ID, 'pp_subscription_package', true);
     $phone             = get_user_meta($user->ID, 'pp_phone', true);
+    $has_xtream_pass   = !empty(get_user_meta($user->ID, 'pp_xtream_pass', true));
+    $api_key_revoked   = (bool) get_user_meta($user->ID, 'pp_api_key_revoked', true);
+    $api_key_exists    = !empty(get_user_meta($user->ID, 'pp_api_key', true));
 
     $options         = get_option('pp_smtp_settings');
     $options         = is_array($options) ? $options : array();
@@ -79,6 +82,11 @@ function pp_save_extra_profile_fields($user_id) {
 
     if (isset($_POST['pp_phone'])) {
         update_user_meta($user_id, 'pp_phone', sanitize_text_field($_POST['pp_phone']));
+    }
+
+    // API key visszavonás
+    if (isset($_POST['pp_api_key_revoke']) && $api_key_exists = !empty(get_user_meta($user_id, 'pp_api_key', true))) {
+        update_user_meta($user_id, 'pp_api_key_revoked', (int) $_POST['pp_api_key_revoke']);
     }
 }
 

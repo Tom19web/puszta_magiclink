@@ -9,16 +9,37 @@ if (!defined('ABSPATH')) {
 }
 
 // ── Xtream jelszó titkosítás/dekriptálás ─────────────────────
+// AES-256-GCM authenticated encryption.
+// Meglévő AES-128-CBC adatok automatikusan migrálódnak mentéskor.
+
 function pp_encrypt_pass($plain) {
+    if (empty($plain)) return '';
     $key = defined('AUTH_KEY') ? AUTH_KEY : wp_salt('auth');
-    $iv  = substr(md5($key), 0, 16);
-    return base64_encode(openssl_encrypt($plain, 'AES-128-CBC', substr($key, 0, 16), 0, $iv));
+    $key = hash('sha256', $key, true);
+    $iv  = openssl_random_pseudo_bytes(12);
+    $tag = '';
+    $ciphertext = openssl_encrypt($plain, 'aes-256-gcm', $key, OPENSSL_RAW_DATA, $iv, $tag);
+    if ($ciphertext === false) return '';
+    return base64_encode('2:' . $iv . $tag . $ciphertext);
 }
 
 function pp_decrypt_pass($encrypted) {
     if (empty($encrypted)) return '';
     $key = defined('AUTH_KEY') ? AUTH_KEY : wp_salt('auth');
-    $iv  = substr(md5($key), 0, 16);
+
+    // Try new format (AES-256-GCM, prefixed with "2:")
+    if (strpos($encrypted, '2:') === 0) {
+        $data   = base64_decode(substr($encrypted, 2));
+        $key256 = hash('sha256', $key, true);
+        $iv     = substr($data, 0, 12);
+        $tag    = substr($data, 12, 16);
+        $ct     = substr($data, 28);
+        $dec    = openssl_decrypt($ct, 'aes-256-gcm', $key256, OPENSSL_RAW_DATA, $iv, $tag);
+        if ($dec !== false) return $dec;
+    }
+
+    // Fallback to legacy AES-128-CBC format
+    $iv = substr(md5($key), 0, 16);
     return openssl_decrypt(base64_decode($encrypted), 'AES-128-CBC', substr($key, 0, 16), 0, $iv);
 }
 
@@ -107,7 +128,7 @@ function pp_fetch_xtream_account_info($user_id) {
  */
 function pp_get_user_ip() {
     $ip_keys = array(
-        'HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 
+        'HTTP_X_REAL_IP', 'HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_FORWARDED', 
         'HTTP_X_CLUSTER_CLIENT_IP', 'HTTP_FORWARDED_FOR', 'HTTP_FORWARDED', 'REMOTE_ADDR'
     );
     
@@ -115,7 +136,6 @@ function pp_get_user_ip() {
         if (array_key_exists($key, $_SERVER) === true) {
             foreach (explode(',', $_SERVER[$key]) as $ip) {
                 $ip = trim($ip);
-                // Validáljuk is azt a nyamvadt IP-t, nehogy egy SQL injekciót kapjunk az arcunkba!
                 if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false) {
                     return $ip;
                 }

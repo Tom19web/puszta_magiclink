@@ -8,15 +8,27 @@ if (!defined('ABSPATH')) exit;
 
 add_action('rest_api_init', 'pp_register_rest_routes');
 
+/**
+ * Permission callback: requires valid api_key in query params.
+ */
+function pp_rest_require_api_key($request) {
+  $api_key = $request->get_param('api_key');
+  if (!$api_key) {
+    return new WP_Error('missing_key', 'API kulcs megadása kötelező.', ['status' => 401]);
+  }
+  $user_id = pp_validate_api_key($api_key);
+  return !is_wp_error($user_id);
+}
+
 function pp_register_rest_routes() {
-  // QR kód igénylés
+  // QR kód igénylés (publikus)
   register_rest_route('pusztaplay/v1', '/qr-request', [
     'methods'             => 'POST',
     'callback'            => 'pp_rest_qr_request',
     'permission_callback' => '__return_true',
   ]);
 
-  // QR kód poll (bejelentkezés állapotának lekérése)
+  // QR kód poll (publikus — a TV app lekérdezi a QR státuszát)
   register_rest_route('pusztaplay/v1', '/qr-poll', [
     'methods'             => 'GET',
     'callback'            => 'pp_rest_qr_poll',
@@ -29,11 +41,11 @@ function pp_register_rest_routes() {
     ],
   ]);
 
-  // Profilok lekérése / mentése
+  // Profilok lekérése / mentése (api_key kötelező)
   register_rest_route('pusztaplay/v1', '/profiles', [
     'methods'             => 'GET',
     'callback'            => 'pp_rest_get_profiles',
-    'permission_callback' => '__return_true',
+    'permission_callback' => 'pp_rest_require_api_key',
     'args' => [
       'api_key' => [
         'required'          => true,
@@ -45,7 +57,7 @@ function pp_register_rest_routes() {
   register_rest_route('pusztaplay/v1', '/profiles', [
     'methods'             => 'POST',
     'callback'            => 'pp_rest_save_profiles',
-    'permission_callback' => '__return_true',
+    'permission_callback' => 'pp_rest_require_api_key',
     'args' => [
       'api_key' => [
         'required'          => true,
@@ -54,11 +66,11 @@ function pp_register_rest_routes() {
     ],
   ]);
 
-  // Felhasználói adatok lekérése
+  // Felhasználói adatok lekérése (api_key kötelező)
   register_rest_route('pusztaplay/v1', '/user', [
     'methods'             => 'GET',
     'callback'            => 'pp_rest_get_user',
-    'permission_callback' => '__return_true',
+    'permission_callback' => 'pp_rest_require_api_key',
     'args' => [
       'api_key' => [
         'required'          => true,
@@ -67,17 +79,21 @@ function pp_register_rest_routes() {
     ],
   ]);
 
-  // Közvetlen bejelentkezés email + WordPress jelszóval (teszteléshez)
-  register_rest_route('pusztaplay/v1', '/auth', [
-    'methods'             => 'POST',
-    'callback'            => 'pp_rest_direct_auth',
-    'permission_callback' => '__return_true',
-  ]);
+  // Közvetlen bejelentkezés email + WP jelszóval
+  // Alapból letiltva; engedélyezés: define('PP_MAGIC_ALLOW_DIRECT_AUTH', true);
+  if (defined('PP_MAGIC_ALLOW_DIRECT_AUTH') && PP_MAGIC_ALLOW_DIRECT_AUTH) {
+    register_rest_route('pusztaplay/v1', '/auth', [
+      'methods'             => 'POST',
+      'callback'            => 'pp_rest_direct_auth',
+      'permission_callback' => '__return_true',
+    ]);
+  }
 
+  // Egyedi profil műveletek (api_key kötelező)
   register_rest_route('pusztaplay/v1', '/profile', [
     'methods'             => 'POST',
     'callback'            => 'pp_rest_save_single_profile',
-    'permission_callback' => '__return_true',
+    'permission_callback' => 'pp_rest_require_api_key',
     'args' => [
       'api_key' => [
         'required'          => true,
@@ -89,6 +105,7 @@ function pp_register_rest_routes() {
 
 /**
  * API key validálás — visszaadja a user_id-t vagy hibát
+ * Ellenőrzi a visszavonást is (pp_api_key_revoked).
  */
 function pp_validate_api_key($api_key) {
   global $wpdb;
@@ -98,6 +115,10 @@ function pp_validate_api_key($api_key) {
   ));
   if (!$user_id) {
     return new WP_Error('invalid_key', 'Érvénytelen API kulcs.', ['status' => 401]);
+  }
+  $revoked = get_user_meta($user_id, 'pp_api_key_revoked', true);
+  if ($revoked) {
+    return new WP_Error('revoked_key', 'API kulcs visszavonva.', ['status' => 403]);
   }
   return (int) $user_id;
 }
@@ -191,6 +212,17 @@ function pp_rest_save_profiles($request) {
   }
 
   if (isset($body['profiles'])) {
+    if (!is_array($body['profiles'])) {
+      return new WP_REST_Response(['error' => 'A profiles mező csak tömb lehet.'], 400);
+    }
+    $body['profiles'] = array_map(function($p) {
+      if (!is_array($p)) return $p;
+      // Sanitize string fields
+      if (isset($p['name']))  $p['name']  = sanitize_text_field($p['name']);
+      if (isset($p['color'])) $p['color'] = sanitize_text_field($p['color']);
+      if (isset($p['avatar'])) $p['avatar'] = sanitize_text_field($p['avatar']);
+      return $p;
+    }, $body['profiles']);
     update_user_meta($user_id, 'pp_profiles', $body['profiles']);
   }
 
@@ -210,7 +242,7 @@ function pp_rest_save_single_profile($request) {
     return new WP_REST_Response(['error' => $user_id->get_error_message()], $user_id->get_error_data()['status']);
   }
 
-  $body       = json_decode($request->get_body(), true);
+  $body       = json_decode($request->get_body(), true) ?? [];
   $action     = $body['action'] ?? 'save';
   $profile_id = $body['profile_id'] ?? '';
 
@@ -307,7 +339,7 @@ function pp_rest_get_user($request) {
 
 // ─── Közvetlen bejelentkezés email + WP jelszóval ───
 function pp_rest_direct_auth($request) {
-  $body = json_decode($request->get_body(), true);
+  $body = json_decode($request->get_body(), true) ?? [];
   $email = sanitize_email($body['email'] ?? '');
   $password = $body['password'] ?? '';
 
@@ -315,10 +347,22 @@ function pp_rest_direct_auth($request) {
     return new WP_REST_Response(['error' => 'Email és jelszó megadása kötelező.'], 400);
   }
 
+  // Rate limiting: max 5 próbálkozás / 5 perc IP-nként
+  $ip = pp_get_user_ip();
+  $rate_key = 'pp_auth_fails_' . md5($ip);
+  $attempts = (int) get_transient($rate_key);
+  if ($attempts >= 5) {
+    return new WP_REST_Response(['error' => 'Túl sok próbálkozás. Várj 5 percet.'], 429);
+  }
+
   $user = wp_authenticate($email, $password);
   if (is_wp_error($user)) {
+    set_transient($rate_key, $attempts + 1, 5 * MINUTE_IN_SECONDS);
     return new WP_REST_Response(['error' => 'Érvénytelen email vagy jelszó.'], 401);
   }
+
+  // Sikeres belépés: töröljük a próbálkozás számlálót
+  delete_transient($rate_key);
 
   $user_id = $user->ID;
   $creds = pp_get_xtream_creds($user_id);

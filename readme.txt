@@ -4,8 +4,8 @@ Tags: magic login, passwordless, security, crm, tv, iptv, xtream, qr, profiles
 Requires at least: 5.8
 Tested up to: 6.5
 Stable tag: 2.2
-License: GPLv2 or later
-License URI: http://www.gnu.org/licenses/gpl-2.0.html
+License: MIT
+License URI: https://opensource.org/licenses/MIT
 
 Biztonságos jelszó nélküli bejelentkezés, QR TV auth, előfizetés-kezelő CRM, profil szinkronizáció, emlékeztetők és számlázás. Végre golyóálló, elegáns és moduláris formában!
 

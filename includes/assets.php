@@ -12,7 +12,18 @@ if (!defined('ABSPATH')) {
 add_action('wp_enqueue_scripts', 'pp_enqueue_frontend_assets');
 
 function pp_enqueue_frontend_assets() {
-    // A frontend.css betöltése - a harsány, pop-art gombjaid otthona
+    global $post;
+
+    // Csak akkor töltjük be, ha a rövidített kódú oldalon vagyunk
+    $has_shortcode = is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'pusztaplay_login')
+        || has_shortcode($post->post_content, 'pusztaplay_dashboard')
+        || has_shortcode($post->post_content, 'pusztaplay_profile_manager')
+        || has_shortcode($post->post_content, 'pusztaplay_service_info')
+        || has_shortcode($post->post_content, 'pusztaplay_vedett');
+
+    if (!$has_shortcode) return;
+
+    // A frontend.css betöltése
     wp_enqueue_style(
         'pp-magic-frontend-style',
         PP_MAGIC_URL . 'assets/css/frontend.css',
@@ -26,10 +37,10 @@ function pp_enqueue_frontend_assets() {
         PP_MAGIC_URL . 'assets/js/frontend.js',
         array(),
         PP_MAGIC_VERSION,
-        true // Fenségesen a footerbe száműzzük, hogy ne akassza meg a renderelést
+        true
     );
 
-    // Profilkezelő JS + CSS — csak ha a shortcode jelen van az oldalon
+    // Profilkezelő JS + CSS
     wp_enqueue_style(
         'pp-profile-manager-style',
         PP_MAGIC_URL . 'assets/css/profile-manager.css',

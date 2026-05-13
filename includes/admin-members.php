@@ -47,11 +47,14 @@ function pp_render_new_member_page() {
                     // Új jövevény teremtése
                     $user_id = wp_create_user($email, wp_generate_password(24, false), $email);
                     wp_new_user_notification($user_id, null, 'user');
-                    $message = '<div class="notice notice-success"><p>Fenséges! Az új tag megszületett, a hírnök elrepült az e-maillel.</p></div>';
                 } else {
                     // Már létező lény adatainak felülírása
                     $user_id = $user->ID;
-                    $message = '<div class="notice notice-info"><p>Ez a halandó már létezett, de az adatait kegyesen felülírtuk.</p></div>';
+                }
+
+                // Egységes üzenet — nem áruljuk el, hogy létezett-e már
+                if ($user_id && !is_wp_error($user_id)) {
+                    $message = '<div class="notice notice-success"><p>Fenséges! A tag adatai elmentve, a hírnök elrepült az e-maillel.</p></div>';
                 }
 
                 // Ha nem történt katasztrófa, mentjük a metaadatokat

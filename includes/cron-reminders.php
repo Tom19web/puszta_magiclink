@@ -115,17 +115,27 @@ function pp_reminder_manual_test() {
     $user_id = absint($_GET['pp_test_reminder']);
     if (!$user_id) return;
 
-    $options = get_option('pp_smtp_settings');
-    $options['reminder_enabled'] = 1; // force enable for the test
-    $original = get_option('pp_smtp_settings');
+    // Use a transient lock instead of temporarily modifying global options
+    $lock = get_transient('pp_reminder_test_lock');
+    if ($lock) {
+        echo '<div class="notice notice-warning"><p>Egy másik teszt már fut. Várj pár másodpercet.</p></div>';
+        return;
+    }
+    set_transient('pp_reminder_test_lock', true, 30);
 
-    // Temporarily enable
-    update_option('pp_smtp_settings', $options);
+    // Override the enabled check by temporarily filtering the option
+    add_filter('pre_option_pp_smtp_settings', function($false) use ($user_id) {
+        global $wpdb;
+        $options = get_option('pp_smtp_settings');
+        if (!is_array($options)) $options = [];
+        $options['reminder_enabled'] = 1;
+        return $options;
+    });
 
     pp_run_expiry_reminders();
 
-    // Restore
-    update_option('pp_smtp_settings', $original);
+    remove_all_filters('pre_option_pp_smtp_settings');
+    delete_transient('pp_reminder_test_lock');
 
     echo '<div class="notice notice-success"><p>Emlékeztető teszt lefutott. Ellenőrizd a felhasználó e-mail fiókját.</p></div>';
 }
