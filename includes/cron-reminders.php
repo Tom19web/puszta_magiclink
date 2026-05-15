@@ -31,13 +31,25 @@ function pp_reminder_clear_schedule() {
 add_action('pp_daily_reminder_check', 'pp_run_expiry_reminders');
 
 function pp_run_expiry_reminders() {
-    // Mutex: ne fusson párhuzamosan két példány (duplikált emailek ellen)
-    if (get_transient('pp_reminder_running')) return;
-    set_transient('pp_reminder_running', true, 5 * MINUTE_IN_SECONDS);
+    // Mutex: atomi lock az options táblában (add_option sikertelen ha már létezik)
+    global $wpdb;
+    $lock_name = 'pp_reminder_lock';
+    $lock_max_age = 5 * MINUTE_IN_SECONDS;
+    $locked = $wpdb->query($wpdb->prepare(
+        "INSERT IGNORE INTO $wpdb->options (option_name, option_value, autoload) VALUES (%s, %d, 'no')",
+        $lock_name, time()
+    ));
+    if (!$locked) {
+        // Lock már létezik — ellenőrizzük, nem járt-e le
+        $lock_time = (int) get_option($lock_name, 0);
+        if ($lock_time && time() - $lock_time < $lock_max_age) return;
+        // Lejárt lock felülírása
+        update_option($lock_name, time(), false);
+    }
 
     $options = get_option('pp_smtp_settings');
     if (empty($options['reminder_enabled'])) {
-        delete_transient('pp_reminder_running');
+        delete_option('pp_reminder_lock');
         return; // kikapcsolva — csendben kisétálunk
     }
 
@@ -107,7 +119,7 @@ function pp_run_expiry_reminders() {
             ]);
         }
     }
-    delete_transient('pp_reminder_running');
+    delete_option('pp_reminder_lock');
 }
 
 /**

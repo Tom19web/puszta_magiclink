@@ -34,18 +34,14 @@ function pp_register_rest_routes() {
     'callback'            => 'pp_rest_qr_poll',
     'permission_callback' => '__return_true',
     'args' => [
-      'api_key' => [
+      'code' => [
         'required'          => true,
         'sanitize_callback' => 'sanitize_text_field',
-        'validate_callback' => function($v) { return strlen($v) <= 64; },
-      ],
-      'masked' => [
-        'sanitize_callback' => 'rest_sanitize_boolean',
       ],
     ],
   ]);
 
-  // Profilok lekérése / mentése (api_key kötelező)
+  // Profilok lekérése — GET (api_key kötelező)
   register_rest_route('pusztaplay/v1', '/profiles', [
     'methods'             => 'GET',
     'callback'            => 'pp_rest_get_profiles',
@@ -59,7 +55,48 @@ function pp_register_rest_routes() {
     ],
   ]);
 
-  // Egyedi profil műveletek (api_key kötelező)
+  // Profilok mentése — POST (api_key kötelező)
+  register_rest_route('pusztaplay/v1', '/profiles', [
+    'methods'             => 'POST',
+    'callback'            => 'pp_rest_save_profiles',
+    'permission_callback' => 'pp_rest_require_api_key',
+    'args' => [
+      'api_key' => [
+        'required'          => true,
+        'sanitize_callback' => 'sanitize_text_field',
+        'validate_callback' => function($v) { return strlen($v) <= 64; },
+      ],
+    ],
+  ]);
+
+  // Felhasználói adatok lekérése — GET /user (api_key kötelező)
+  register_rest_route('pusztaplay/v1', '/user', [
+    'methods'             => 'GET',
+    'callback'            => 'pp_rest_get_user',
+    'permission_callback' => 'pp_rest_require_api_key',
+    'args' => [
+      'api_key' => [
+        'required'          => true,
+        'sanitize_callback' => 'sanitize_text_field',
+        'validate_callback' => function($v) { return strlen($v) <= 64; },
+      ],
+      'masked' => [
+        'sanitize_callback' => 'rest_sanitize_boolean',
+      ],
+    ],
+  ]);
+
+  // Közvetlen bejelentkezés email + WP jelszóval — POST /auth
+  // Csak PP_MAGIC_ALLOW_DIRECT_AUTH konstans definiálása esetén aktív
+  if (defined('PP_MAGIC_ALLOW_DIRECT_AUTH') && PP_MAGIC_ALLOW_DIRECT_AUTH) {
+    register_rest_route('pusztaplay/v1', '/auth', [
+      'methods'             => 'POST',
+      'callback'            => 'pp_rest_direct_auth',
+      'permission_callback' => '__return_true',
+    ]);
+  }
+
+  // Egyedi profil műveletek — POST /profile (api_key kötelező)
   register_rest_route('pusztaplay/v1', '/profile', [
     'methods'             => 'POST',
     'callback'            => 'pp_rest_save_single_profile',
