@@ -37,6 +37,11 @@ function pp_render_login_shortcode() {
             $message = 'error';
             $error_message = 'Biztonsági hiba. Próbáld újra.';
         }
+        // Timestamp bot-védelem: ha a formot 2 mp-nél gyorsabban küldték el (bot), vagy 1 óránál régebben töltötték
+        elseif (!isset($_POST['pp_timestamp']) || abs(time() - (int) $_POST['pp_timestamp']) < 2 || abs(time() - (int) $_POST['pp_timestamp']) > 3600) {
+            $show_form = false;
+            $message = 'success_fake';
+        }
         // Honeypot védelem: ha a bot belelépett a csapdába
         elseif (!empty($_POST['pp_website_url_catch'])) {
             $show_form = false;
@@ -47,6 +52,10 @@ function pp_render_login_shortcode() {
             $ip_block_key    = 'pp_block_' . md5($user_ip);
             $email_limit_key = 'pp_limit_' . md5($email);
             $fail_key        = 'pp_fails_' . md5($user_ip);
+            $max_fails       = apply_filters('pp_magic_max_login_fails', 3);
+            $block_duration  = apply_filters('pp_magic_block_duration', 5 * MINUTE_IN_SECONDS);
+            $fail_ttl        = apply_filters('pp_magic_fail_ttl', 5 * MINUTE_IN_SECONDS);
+            $email_cooldown  = apply_filters('pp_magic_email_cooldown', 5 * MINUTE_IN_SECONDS);
 
             // Blokkolt IP ellenőrzése
             if (get_transient($ip_block_key)) {
@@ -69,15 +78,15 @@ function pp_render_login_shortcode() {
                 if (is_wp_error($result)) {
                     if ($result->get_error_code() === 'no_user') {
                         $fails = (int) get_transient($fail_key) + 1;
-                        if ($fails >= 3) {
-                            set_transient($ip_block_key, true, 5 * MINUTE_IN_SECONDS);
+                        if ($fails >= $max_fails) {
+                            set_transient($ip_block_key, true, $block_duration);
                             delete_transient($fail_key);
                             $show_form = false;
                             $message   = 'blocked';
                         } else {
-                            set_transient($fail_key, $fails, 5 * MINUTE_IN_SECONDS);
+                            set_transient($fail_key, $fails, $fail_ttl);
                             $message        = 'not_found';
-                            $remaining_try  = 3 - $fails;
+                            $remaining_try  = $max_fails - $fails;
                         }
                     } else {
                         $message       = 'error';
@@ -85,8 +94,8 @@ function pp_render_login_shortcode() {
                     }
                 } else {
                     // Micsoda diadal!
-                    $resend_until = time() + (5 * MINUTE_IN_SECONDS);
-                    set_transient($email_limit_key, $resend_until, 5 * MINUTE_IN_SECONDS);
+                    $resend_until = time() + $email_cooldown;
+                    set_transient($email_limit_key, $resend_until, $email_cooldown);
                     delete_transient($fail_key);
                     $show_form = false;
                     $message   = 'success';
@@ -117,8 +126,7 @@ add_shortcode('pusztaplay_dashboard', 'pp_render_dashboard_shortcode');
 
 function pp_render_dashboard_shortcode() {
     if (!is_user_logged_in()) {
-        wp_safe_redirect(home_url('/belepes/'));
-        exit;
+        return '<p><a href="' . esc_url(home_url('/belepes/')) . '">Jelentkezz be</a> a vezérlőpult megtekintéséhez.</p>';
     }
 
     ob_start();
@@ -221,6 +229,24 @@ function pp_render_profile_manager_shortcode() {
 /**
  * 4. Kijelentkezés lekezelése (Kivételesen itt maradhat, mint egy frontend action)
  */
+/**
+ * 12. Redirect unauthenticated users away from protected pages
+ */
+add_action('template_redirect', 'pp_redirect_protected_pages');
+
+function pp_redirect_protected_pages() {
+    if (is_user_logged_in()) return;
+    global $post;
+    if (!is_a($post, 'WP_Post')) return;
+    $protected_shortcodes = ['pusztaplay_dashboard', 'pusztaplay_profile_manager', 'pusztaplay_service_info'];
+    foreach ($protected_shortcodes as $sc) {
+        if (has_shortcode($post->post_content, $sc)) {
+            wp_safe_redirect(home_url('/belepes/'));
+            exit;
+        }
+    }
+}
+
 add_action('template_redirect', 'pp_custom_logout_handler');
 
 function pp_custom_logout_handler() {

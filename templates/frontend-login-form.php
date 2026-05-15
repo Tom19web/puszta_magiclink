@@ -9,6 +9,7 @@
         <?php $rd = isset($_REQUEST['redirect_to']) ? esc_url_raw($_REQUEST['redirect_to']) : ''; if ($rd): ?>
         <input type="hidden" name="redirect_to" value="<?php echo esc_attr($rd); ?>">
         <?php endif; ?>
+        <input type="hidden" name="pp_timestamp" value="<?php echo time(); ?>">
         <div style="position: absolute; left: -9999px; top: -9999px;" aria-hidden="true">
             <input type="text" name="pp_website_url_catch" tabindex="-1" autocomplete="off">
         </div>

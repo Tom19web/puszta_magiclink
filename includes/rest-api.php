@@ -94,6 +94,17 @@ function pp_validate_api_key($api_key) {
   return (int) $user_id;
 }
 
+/**
+ * Sanitize nested array: limit depth to 4, size to 500KB, re-encode for safety.
+ */
+function pp_sanitize_nested_array($data) {
+  if (!is_array($data)) return [];
+  $encoded = wp_json_encode($data, JSON_INVALID_UTF8_SUBSTITUTE);
+  if (strlen($encoded) > 500 * 1024) return []; // 500KB max
+  $decoded = json_decode($encoded, true);
+  return is_array($decoded) ? $decoded : [];
+}
+
 // ─── QR kódok ─────────────────────────────────────
 
 function pp_rest_qr_request() {
@@ -188,17 +199,16 @@ function pp_rest_save_profiles($request) {
     }
     $body['profiles'] = array_map(function($p) {
       if (!is_array($p)) return $p;
-      // Sanitize string fields
       if (isset($p['name']))  $p['name']  = sanitize_text_field($p['name']);
       if (isset($p['color'])) $p['color'] = sanitize_text_field($p['color']);
       if (isset($p['avatar'])) $p['avatar'] = sanitize_text_field($p['avatar']);
       return $p;
     }, $body['profiles']);
-    update_user_meta($user_id, 'pp_profiles', $body['profiles']);
+    update_user_meta($user_id, 'pp_profiles', pp_sanitize_nested_array($body['profiles']));
   }
 
   if (isset($body['watch_progress'])) {
-    update_user_meta($user_id, 'pp_watch_progress', $body['watch_progress']);
+    update_user_meta($user_id, 'pp_watch_progress', pp_sanitize_nested_array($body['watch_progress']));
   }
 
   return new WP_REST_Response(['success' => true], 200);
@@ -328,13 +338,15 @@ function pp_rest_direct_auth($request) {
   $ip = pp_get_user_ip();
   $rate_key = 'pp_auth_fails_' . md5($ip);
   $attempts = (int) get_transient($rate_key);
-  if ($attempts >= 5) {
+  $max_attempts = apply_filters('pp_magic_rate_limit_attempts', 5);
+  $window = apply_filters('pp_magic_rate_limit_window', 5 * MINUTE_IN_SECONDS);
+  if ($attempts >= $max_attempts) {
     return new WP_REST_Response(['error' => 'Túl sok próbálkozás. Várj 5 percet.'], 429);
   }
 
   $user = wp_authenticate($email, $password);
   if (is_wp_error($user)) {
-    set_transient($rate_key, $attempts + 1, 5 * MINUTE_IN_SECONDS);
+    set_transient($rate_key, $attempts + 1, $window);
     return new WP_REST_Response(['error' => 'Érvénytelen email vagy jelszó.'], 401);
   }
 

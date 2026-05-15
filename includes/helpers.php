@@ -39,6 +39,7 @@ function pp_decrypt_pass($encrypted) {
     }
 
     // Fallback to legacy AES-128-CBC format
+    // TODO: Remove this fallback in v3.0 after all records are migrated via the admin tool
     $iv = substr(md5($key), 0, 16);
     return openssl_decrypt(base64_decode($encrypted), 'AES-128-CBC', substr($key, 0, 16), 0, $iv);
 }
@@ -49,6 +50,7 @@ function pp_get_xtream_pass($user_id) {
     return $creds['xtream_pass'];
 }
 
+/** @return array{xtream_user: string, xtream_pass: string, package: string, sub_end: int} */
 function pp_get_xtream_creds($user_id) {
     $user_id = (int) $user_id;
     $xtream_user = get_user_meta($user_id, 'pp_client_id', true);
@@ -65,6 +67,7 @@ function pp_get_xtream_creds($user_id) {
 }
 
 // ── Xtream szerveroldali account info lekérése (5 perces cache) ──
+/** @return array|WP_Error */
 function pp_fetch_xtream_account_info($user_id) {
     $user_id = (int) $user_id;
     $cache_key = 'pp_xtream_info_' . $user_id;

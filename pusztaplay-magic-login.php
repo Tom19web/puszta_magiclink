@@ -11,6 +11,14 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// PHP verzió ellenőrzés
+if (version_compare(PHP_VERSION, '7.1', '<') || !function_exists('openssl_encrypt')) {
+    add_action('admin_notices', function() {
+        echo '<div class="notice notice-error"><p>PusztaPlay Magic Login requires PHP 7.1+ with OpenSSL.</p></div>';
+    });
+    return;
+}
+
 // Alapvető konstansok
 define('PP_MAGIC_VERSION', '2.2');
 define('PP_MAGIC_DIR', plugin_dir_path(__FILE__));
