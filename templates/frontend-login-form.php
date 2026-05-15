@@ -5,6 +5,7 @@
         <p style="margin: 5px 0 0 0; font-size: 15px; font-weight: bold; color: #555;">Nincs jelszó, csak mágia. 🪄</p>
     </div>
     <form method="post" style="margin: 0;">
+        <?php wp_nonce_field('pp_magic_login_action', 'pp_magic_nonce'); ?>
         <?php $rd = isset($_REQUEST['redirect_to']) ? esc_url_raw($_REQUEST['redirect_to']) : ''; if ($rd): ?>
         <input type="hidden" name="redirect_to" value="<?php echo esc_attr($rd); ?>">
         <?php endif; ?>

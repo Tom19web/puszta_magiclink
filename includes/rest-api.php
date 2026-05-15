@@ -34,9 +34,13 @@ function pp_register_rest_routes() {
     'callback'            => 'pp_rest_qr_poll',
     'permission_callback' => '__return_true',
     'args' => [
-      'code' => [
+      'api_key' => [
         'required'          => true,
         'sanitize_callback' => 'sanitize_text_field',
+        'validate_callback' => function($v) { return strlen($v) <= 64; },
+      ],
+      'masked' => [
+        'sanitize_callback' => 'rest_sanitize_boolean',
       ],
     ],
   ]);
@@ -50,44 +54,10 @@ function pp_register_rest_routes() {
       'api_key' => [
         'required'          => true,
         'sanitize_callback' => 'sanitize_text_field',
+        'validate_callback' => function($v) { return strlen($v) <= 64; },
       ],
     ],
   ]);
-
-  register_rest_route('pusztaplay/v1', '/profiles', [
-    'methods'             => 'POST',
-    'callback'            => 'pp_rest_save_profiles',
-    'permission_callback' => 'pp_rest_require_api_key',
-    'args' => [
-      'api_key' => [
-        'required'          => true,
-        'sanitize_callback' => 'sanitize_text_field',
-      ],
-    ],
-  ]);
-
-  // Felhasználói adatok lekérése (api_key kötelező)
-  register_rest_route('pusztaplay/v1', '/user', [
-    'methods'             => 'GET',
-    'callback'            => 'pp_rest_get_user',
-    'permission_callback' => 'pp_rest_require_api_key',
-    'args' => [
-      'api_key' => [
-        'required'          => true,
-        'sanitize_callback' => 'sanitize_text_field',
-      ],
-    ],
-  ]);
-
-  // Közvetlen bejelentkezés email + WP jelszóval
-  // Alapból letiltva; engedélyezés: define('PP_MAGIC_ALLOW_DIRECT_AUTH', true);
-  if (defined('PP_MAGIC_ALLOW_DIRECT_AUTH') && PP_MAGIC_ALLOW_DIRECT_AUTH) {
-    register_rest_route('pusztaplay/v1', '/auth', [
-      'methods'             => 'POST',
-      'callback'            => 'pp_rest_direct_auth',
-      'permission_callback' => '__return_true',
-    ]);
-  }
 
   // Egyedi profil műveletek (api_key kötelező)
   register_rest_route('pusztaplay/v1', '/profile', [
@@ -98,6 +68,7 @@ function pp_register_rest_routes() {
       'api_key' => [
         'required'          => true,
         'sanitize_callback' => 'sanitize_text_field',
+        'validate_callback' => function($v) { return strlen($v) <= 64; },
       ],
     ],
   ]);
@@ -325,13 +296,19 @@ function pp_rest_get_user($request) {
 
   $user = get_userdata($user_id);
   $creds = pp_get_xtream_creds($user_id);
+  $xtream_pass = $creds['xtream_pass'];
+
+  // Masked mode: return only first 4 + last 4 characters
+  if ($request->get_param('masked') && strlen($xtream_pass) > 8) {
+    $xtream_pass = substr($xtream_pass, 0, 4) . '****' . substr($xtream_pass, -4);
+  }
 
   return new WP_REST_Response([
     'email'       => $user ? $user->user_email : '',
     'nickname'    => get_user_meta($user_id, 'nickname', true) ?: $user->display_name,
     'phone'       => get_user_meta($user_id, 'pp_phone', true) ?: '',
     'xtream_user' => $creds['xtream_user'],
-    'xtream_pass' => $creds['xtream_pass'],
+    'xtream_pass' => $xtream_pass,
     'package'     => $creds['package'],
     'sub_end'     => $creds['sub_end'],
   ], 200);

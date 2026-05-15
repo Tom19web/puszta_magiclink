@@ -220,3 +220,26 @@ function pp_hide_admin_bar_for_plebs($show) {
     }
     return $show;
 }
+
+// ── AES-256-GCM migráció (legacy AES-128-CBC → GCM) ──
+
+function pp_migrate_legacy_encryption() {
+    $count = 0;
+    $users = get_users([
+        'meta_key'     => 'pp_xtream_pass',
+        'meta_compare' => 'EXISTS',
+        'number'       => -1,
+    ]);
+    foreach ($users as $user) {
+        $encrypted = get_user_meta($user->ID, 'pp_xtream_pass', true);
+        if (empty($encrypted) || strpos($encrypted, '2:') === 0) continue;
+        $plain = pp_decrypt_pass($encrypted);
+        if ($plain === false || $plain === null || $plain === '') continue;
+        $re_encrypted = pp_encrypt_pass($plain);
+        if (!empty($re_encrypted)) {
+            update_user_meta($user->ID, 'pp_xtream_pass', $re_encrypted);
+            $count++;
+        }
+    }
+    return $count;
+}

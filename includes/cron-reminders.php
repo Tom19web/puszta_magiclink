@@ -31,8 +31,13 @@ function pp_reminder_clear_schedule() {
 add_action('pp_daily_reminder_check', 'pp_run_expiry_reminders');
 
 function pp_run_expiry_reminders() {
+    // Mutex: ne fusson párhuzamosan két példány (duplikált emailek ellen)
+    if (get_transient('pp_reminder_running')) return;
+    set_transient('pp_reminder_running', true, 5 * MINUTE_IN_SECONDS);
+
     $options = get_option('pp_smtp_settings');
     if (empty($options['reminder_enabled'])) {
+        delete_transient('pp_reminder_running');
         return; // kikapcsolva — csendben kisétálunk
     }
 
@@ -102,6 +107,7 @@ function pp_run_expiry_reminders() {
             ]);
         }
     }
+    delete_transient('pp_reminder_running');
 }
 
 /**

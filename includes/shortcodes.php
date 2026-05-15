@@ -31,8 +31,14 @@ function pp_render_login_shortcode() {
     $message   = '';
 
     if (isset($_POST['pp_magic_email'])) {
+        // CSRF védelem: nonce ellenőrzés
+        if (!isset($_POST['pp_magic_nonce']) || !wp_verify_nonce($_POST['pp_magic_nonce'], 'pp_magic_login_action')) {
+            $show_form = false;
+            $message = 'error';
+            $error_message = 'Biztonsági hiba. Próbáld újra.';
+        }
         // Honeypot védelem: ha a bot belelépett a csapdába
-        if (!empty($_POST['pp_website_url_catch'])) {
+        elseif (!empty($_POST['pp_website_url_catch'])) {
             $show_form = false;
             $message = 'success_fake'; // Sablonban kezeljük a hamis sikert
         } else {

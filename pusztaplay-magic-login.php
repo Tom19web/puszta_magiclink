@@ -62,7 +62,7 @@ function pp_magic_login_activate() {
 
     $author_id = get_current_user_id() ?: 1;
 
-    if (!get_page_by_path('belepes')) {
+    if (!(new WP_Query(['pagename' => 'belepes', 'post_type' => 'page', 'fields' => 'ids']))->have_posts()) {
         wp_insert_post(array(
             'post_title'   => 'Belépés',
             'post_name'    => 'belepes',
@@ -73,7 +73,7 @@ function pp_magic_login_activate() {
         ));
     }
 
-    if (!get_page_by_path('vezerlopult')) {
+    if (!(new WP_Query(['pagename' => 'vezerlopult', 'post_type' => 'page', 'fields' => 'ids']))->have_posts()) {
         wp_insert_post(array(
             'post_title'   => 'Vezérlőpult',
             'post_name'    => 'vezerlopult',

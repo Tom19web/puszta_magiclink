@@ -42,6 +42,7 @@ function pp_sanitize_pp_settings($input) {
     // SMTP mezők
     if (isset($clean['host']))         $clean['host']         = sanitize_text_field($clean['host']);
     if (isset($clean['port']))         $clean['port']         = absint($clean['port']);
+    if (isset($clean['encryption']))   $clean['encryption']   = in_array($clean['encryption'], ['ssl', 'tls'], true) ? $clean['encryption'] : '';
     if (isset($clean['user']))         $clean['user']         = sanitize_email($clean['user']);
     // Jelszó: ha üresen érkezik, tartsuk meg a régit; ha van új, titkosítsuk
     if (isset($clean['pass'])) {
@@ -89,6 +90,17 @@ function pp_render_magic_login_settings_page() {
     $options = get_option('pp_smtp_settings');
     $options = is_array($options) ? $options : array();
 
+    // AES migráció trigger
+    $migration_result = '';
+    if (isset($_GET['pp_migrate_encryption']) && $_GET['pp_migrate_encryption'] === '1') {
+        if (!wp_verify_nonce($_GET['_wpnonce'], 'pp_migrate_encryption')) {
+            $migration_result = '<div class="notice notice-error"><p>Biztonsági hiba.</p></div>';
+        } else {
+            $count = pp_migrate_legacy_encryption();
+            $migration_result = '<div class="notice notice-success"><p>Migráció kész. ' . $count . ' felhasználó jelszava frissítve AES-256-GCM-re.</p></div>';
+        }
+    }
+
     // Színpadra hívjuk a HTML-t!
     $template_path = PP_MAGIC_DIR . 'templates/admin-settings-page.php';
     if (file_exists($template_path)) {
@@ -115,7 +127,7 @@ function pp_configure_smtp($phpmailer) {
     $phpmailer->Host       = sanitize_text_field($options['host']);
     $phpmailer->SMTPAuth   = true;
     $phpmailer->Port       = absint($options['port']);
-    $phpmailer->SMTPSecure = ($options['port'] == 465) ? 'ssl' : 'tls';
+    $phpmailer->SMTPSecure = !empty($options['encryption']) ? $options['encryption'] : (($options['port'] == 465) ? 'ssl' : 'tls');
     $phpmailer->Username   = sanitize_text_field($options['user']);
     $phpmailer->Password   = pp_decrypt_pass($options['pass']);
     $phpmailer->From       = sanitize_email($options['from_email']);

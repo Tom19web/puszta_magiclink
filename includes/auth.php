@@ -19,7 +19,7 @@ function pp_generate_and_send_magic_link($email, $redirect_to = '') {
 
     // 1. A BIZTONSÁG OLTÁRA: Token generálás és HASH-elés
     $raw_token = wp_generate_password(32, false);
-    $hashed_token = wp_hash($raw_token); // Soha nem mentünk nyers tokent!
+    $hashed_token = wp_hash($raw_token, 'nonce'); // Soha nem mentünk nyers tokent!
     
     // Transient használata a biztonságos tároláshoz a hashelt verzióval
     set_transient('pp_magic_token_' . $hashed_token, $user->ID, 15 * MINUTE_IN_SECONDS);
@@ -62,7 +62,7 @@ function pp_verify_magic_link() {
         $raw_token = sanitize_text_field($_GET['pp_magic_token']);
         
         // Visszafejtjük a hashelt formát, hogy ellenőrizhessük a transient-et
-        $hashed_token = wp_hash($raw_token);
+        $hashed_token = wp_hash($raw_token, 'nonce');
         $user_id = get_transient('pp_magic_token_' . $hashed_token);
         
         // Linkszkenner védelem: A "Kattints a belépéshez" köztes állomás

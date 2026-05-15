@@ -84,9 +84,16 @@ function pp_save_extra_profile_fields($user_id) {
         update_user_meta($user_id, 'pp_phone', sanitize_text_field($_POST['pp_phone']));
     }
 
-    // API key visszavonás
-    if (isset($_POST['pp_api_key_revoke']) && $api_key_exists = !empty(get_user_meta($user_id, 'pp_api_key', true))) {
-        update_user_meta($user_id, 'pp_api_key_revoked', (int) $_POST['pp_api_key_revoke']);
+    // API key visszavonás / újragenerálás
+    $api_key_exists = !empty(get_user_meta($user_id, 'pp_api_key', true));
+    if (!$api_key_exists) return;
+    $revoke = isset($_POST['pp_api_key_revoke']) ? (int) $_POST['pp_api_key_revoke'] : 0;
+    if ($revoke) {
+        update_user_meta($user_id, 'pp_api_key_revoked', 1);
+    } else {
+        // Visszavonás feloldása: új kulcs generálása (a régi kompromittálódott lehetett)
+        delete_user_meta($user_id, 'pp_api_key_revoked');
+        update_user_meta($user_id, 'pp_api_key', wp_generate_password(32, false));
     }
 }
 

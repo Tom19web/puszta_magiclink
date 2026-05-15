@@ -26,6 +26,17 @@
                 <td><input type="number" name="pp_smtp_settings[port]" value="<?php echo esc_attr(isset($options['port']) ? $options['port'] : '465'); ?>" class="small-text"></td>
             </tr>
             <tr>
+                <th scope="row"><label>Titkosítás (SMTP)</label></th>
+                <td>
+                    <select name="pp_smtp_settings[encryption]" class="regular-text">
+                        <option value="" <?php selected($options['encryption'] ?? '', ''); ?>>Automatikus (port alapján: 465→ssl, egyéb→tls)</option>
+                        <option value="ssl" <?php selected($options['encryption'] ?? '', 'ssl'); ?>>SSL</option>
+                        <option value="tls" <?php selected($options['encryption'] ?? '', 'tls'); ?>>TLS (STARTTLS)</option>
+                    </select>
+                    <p class="description">Ha nem biztos, hagyd "Automatikus"-on.</p>
+                </td>
+            </tr>
+            <tr>
                 <th scope="row"><label>Felhasználónév (SMTP)</label></th>
                 <td><input type="email" name="pp_smtp_settings[user]" value="<?php echo esc_attr(isset($options['user']) ? $options['user'] : ''); ?>" class="regular-text"></td>
             </tr>
@@ -98,4 +109,10 @@
         </table>
         <?php submit_button('Diktátum Mentése'); ?>
     </form>
+
+    <hr style="margin:20px 0;">
+    <h2>🔐 Titkosítás</h2>
+    <p class="description">A régi AES-128-CBC formátumban tárolt jelszavak migrálása AES-256-GCM-re.</p>
+    <a href="<?php echo esc_url(wp_nonce_url(add_query_arg('pp_migrate_encryption', '1'), 'pp_migrate_encryption')); ?>" class="button button-secondary">Legacy jelszavak migrálása</a>
+    <?php if (!empty($migration_result)) echo $migration_result; ?>
 </div>

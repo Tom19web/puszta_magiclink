@@ -49,6 +49,14 @@ Felejtsd el a jelszavakat! A PusztaPlay Auth + CRM elhozza a kényelem és a kí
 4. Töltsd ki az SMTP adatokat (Host, Port, User, Pass) és az előfizetői csomagokat
 5. Kész!
 
+== Advanced Configuration ==
+
+`PP_MAGIC_ALLOW_DIRECT_AUTH` — Enable the `/auth` REST endpoint that accepts email + WordPress password and returns Xtream credentials. **Disabled by default.** To enable, add to `wp-config.php`:
+
+    define('PP_MAGIC_ALLOW_DIRECT_AUTH', true);
+
+⚠ WARNING: Enabling this exposes Xtream credentials to anyone who knows a user's WordPress password. Use QR code auth instead whenever possible. The endpoint includes IP-based rate limiting (5 attempts / 5 minutes) but is still a security risk when enabled.
+
 == Changelog ==
 
 = 2.2 =
